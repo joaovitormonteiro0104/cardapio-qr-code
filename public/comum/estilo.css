@@ -1,0 +1,138 @@
+/* Estilo comum às três partes. Cada tela pode ter o seu CSS extra. */
+
+:root {
+  --cor-fundo: #faf7f2;
+  --cor-superficie: #ffffff;
+  --cor-texto: #2b2b2b;
+  --cor-suave: #6b6b6b;
+  --cor-borda: #e2ddd5;
+  --cor-primaria: #b5441b;
+  --cor-primaria-escura: #8f3414;
+  --cor-sucesso: #2e7d32;
+  --cor-erro: #c62828;
+  --cor-erro-fundo: #fdecea;
+  --raio: 8px;
+  --fonte: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--fonte);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--cor-texto);
+  background: var(--cor-fundo);
+}
+
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+h1, h2, h3 {
+  line-height: 1.2;
+}
+
+/* Menu do admin */
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--cor-superficie);
+  border-bottom: 1px solid var(--cor-borda);
+}
+
+nav a {
+  color: var(--cor-primaria);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+/* Botões */
+button,
+.botao {
+  display: inline-block;
+  padding: 10px 16px;
+  min-height: 44px; /* fácil de tocar no celular */
+  border: none;
+  border-radius: var(--raio);
+  background: var(--cor-primaria);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+button:hover,
+.botao:hover {
+  background: var(--cor-primaria-escura);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+button.secundario {
+  background: transparent;
+  color: var(--cor-primaria);
+  border: 1px solid var(--cor-primaria);
+}
+
+button.perigo {
+  background: var(--cor-erro);
+}
+
+/* Formulários */
+label {
+  display: block;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+input,
+select,
+textarea {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+  font: inherit;
+  background: var(--cor-superficie);
+}
+
+/* Cartões (pratos, pedidos, mesas) */
+.cartao {
+  padding: 16px;
+  margin-bottom: 12px;
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+}
+
+/* Aviso de erro na página (no lugar de alert()) */
+.aviso-erro {
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: var(--raio);
+  background: var(--cor-erro-fundo);
+  color: var(--cor-erro);
+  border: 1px solid var(--cor-erro);
+}
+
+.aviso-erro:empty {
+  display: none;
+}
+
+.texto-suave {
+  color: var(--cor-suave);
+}

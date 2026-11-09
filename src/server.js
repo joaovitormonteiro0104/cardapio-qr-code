@@ -1,8 +1,9 @@
-// Sobe o servidor na porta do .env (npm run dev ou npm start).
+// Sobe o servidor. O app fica separado (app.js) para os testes usarem sem abrir porta.
+import { URL_PUBLICA } from './config.js'; // valida o .env antes de tudo
 import { app } from './app.js';
 
-const porta = Number(process.env.PORT) || 3000;
+const PORTA = Number(process.env.PORT ?? 3000);
 
-app.listen(porta, () => {
-  console.log(`Servidor rodando em http://localhost:${porta}`);
+app.listen(PORTA, () => {
+  console.log(`Servidor rodando em ${URL_PUBLICA}`);
 });
