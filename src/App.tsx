@@ -14,6 +14,7 @@ const CardapioClientePage = lazy(() => import('@/pages/mesa/CardapioPage'))
 const ComandaPage = lazy(() => import('@/pages/mesa/ComandaPage'))
 const CardapioGerenciaPage = lazy(() => import('@/pages/gerencia/CardapioPage'))
 const PedidosCozinhaPage = lazy(() => import('@/pages/cozinha/PedidosPage'))
+const AuditoriaPage = lazy(() => import('@/pages/gerencia/AuditoriaPage'))
 
 const OPERACAO: readonly Papel[] = ['operacao', 'gerencia']
 const GERENCIA: readonly Papel[] = ['gerencia']
@@ -59,6 +60,14 @@ export default function App() {
               element={
                 <Protegida papeis={GERENCIA}>
                   <CardapioGerenciaPage />
+                </Protegida>
+              }
+            />
+            <Route
+              path="/gerencia/auditoria"
+              element={
+                <Protegida papeis={GERENCIA}>
+                  <AuditoriaPage />
                 </Protegida>
               }
             />

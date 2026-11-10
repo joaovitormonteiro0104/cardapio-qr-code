@@ -1,6 +1,98 @@
+import { z } from 'zod'
 import { supabase } from './supabase'
 import type { Ator, NovoEvento } from '@/domain/auditoria/evento'
 import { DOMINIO_EMAIL_SINTETICO } from '@/schemas/auth'
+import { DataHoraSchema } from '@/schemas/comum'
+
+const EventoSchema = z.object({
+  id: z.uuid(),
+  criadoEm: DataHoraSchema,
+  tipoEvento: z.string(),
+  atorTipo: z.enum(['cliente', 'funcionario', 'sistema']),
+  atorId: z.string().nullable(),
+  comandaId: z.uuid().nullable(),
+  pedidoId: z.uuid().nullable(),
+  motivo: z.string().nullable(),
+  payload: z.unknown(),
+})
+export type EventoAuditoria = z.infer<typeof EventoSchema>
+
+interface LinhaEvento {
+  id: string
+  criado_em: string
+  tipo_evento: string
+  ator_tipo: string
+  ator_id: string | null
+  comanda_id: string | null
+  pedido_id: string | null
+  motivo: string | null
+  payload: unknown
+}
+
+function paraEvento(l: LinhaEvento): EventoAuditoria {
+  return EventoSchema.parse({
+    id: l.id,
+    criadoEm: l.criado_em,
+    tipoEvento: l.tipo_evento,
+    atorTipo: l.ator_tipo,
+    atorId: l.ator_id,
+    comandaId: l.comanda_id,
+    pedidoId: l.pedido_id,
+    motivo: l.motivo,
+    payload: l.payload,
+  })
+}
+
+export interface FiltrosAuditoria {
+  desde: Date
+  ate: Date
+  tipoEvento?: string | null
+  atorId?: string | null
+  /** começa em 0 */
+  pagina: number
+}
+
+export const TAMANHO_PAGINA = 50
+const LIMITE_EXPORTACAO = 50_000
+const COLUNAS = 'id, criado_em, tipo_evento, ator_tipo, ator_id, comanda_id, pedido_id, motivo, payload'
+
+function base(contar: boolean) {
+  return supabase.from('eventos_auditoria').select(COLUNAS, contar ? { count: 'exact' } : undefined)
+}
+
+function aplicarFiltros(consulta: ReturnType<typeof base>, f: Omit<FiltrosAuditoria, 'pagina'>) {
+  let q = consulta.gte('criado_em', f.desde.toISOString()).lt('criado_em', f.ate.toISOString())
+  if (f.tipoEvento) q = q.eq('tipo_evento', f.tipoEvento)
+  if (f.atorId) q = q.eq('ator_id', f.atorId.trim())
+  return q
+}
+
+/** Página de eventos (só gerência, pela RLS), mais recentes primeiro. */
+export async function listar(f: FiltrosAuditoria): Promise<{ eventos: EventoAuditoria[]; total: number }> {
+  const inicio = f.pagina * TAMANHO_PAGINA
+  const { data, error, count } = await aplicarFiltros(base(true), f)
+    .order('criado_em', { ascending: false })
+    .range(inicio, inicio + TAMANHO_PAGINA - 1)
+  if (error) throw new Error(`auditoria.listar: ${error.message}`)
+  return { eventos: (data as LinhaEvento[]).map(paraEvento), total: count ?? 0 }
+}
+
+/** Todos os eventos do período (em lotes de 1000), mais antigos primeiro, para o CSV. */
+export async function listarParaExportacao(f: Omit<FiltrosAuditoria, 'pagina'>): Promise<EventoAuditoria[]> {
+  const todos: EventoAuditoria[] = []
+  const lote = 1000
+  for (let inicio = 0; inicio < LIMITE_EXPORTACAO; inicio += lote) {
+    const { data, error } = await aplicarFiltros(base(false), f)
+      .order('criado_em', { ascending: true })
+      .order('id', { ascending: true })
+      .range(inicio, inicio + lote - 1)
+    if (error) throw new Error(`auditoria.exportar: ${error.message}`)
+    const linhas = data as LinhaEvento[]
+    todos.push(...linhas.map(paraEvento))
+    if (linhas.length < lote) break
+  }
+  return todos
+}
 
 /**
  * Grava um evento no log append-only (AGENTS.md §6.10).
