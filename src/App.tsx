@@ -2,12 +2,16 @@ import { lazy, Suspense, type ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '@/components/AuthProvider'
 import { Carregando } from '@/components/Carregando'
+import { ConfigProvider } from '@/components/ConfigProvider'
 import { LayoutEquipe } from '@/components/LayoutEquipe'
 import { RotaProtegida } from '@/components/RotaProtegida'
 import type { Papel } from '@/schemas/auth'
 
 // Cada área carrega sob demanda: o celular do cliente não baixa o código da gerência.
 const LoginPage = lazy(() => import('@/pages/login/LoginPage'))
+const MesaLayout = lazy(() => import('@/pages/mesa/MesaLayout'))
+const CardapioClientePage = lazy(() => import('@/pages/mesa/CardapioPage'))
+const ComandaPage = lazy(() => import('@/pages/mesa/ComandaPage'))
 const CardapioGerenciaPage = lazy(() => import('@/pages/gerencia/CardapioPage'))
 
 const OPERACAO: readonly Papel[] = ['operacao', 'gerencia']
@@ -28,40 +32,48 @@ function EmBreve({ titulo, item }: { titulo: string; item: number }) {
 export default function App() {
   return (
     <AuthProvider>
-      <Suspense fallback={<Carregando />}>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
+      <ConfigProvider>
+        <Suspense fallback={<Carregando />}>
+          <Routes>
+            <Route path="/mesa/:numero" element={<MesaLayout />}>
+              <Route index element={<CardapioClientePage />} />
+              <Route path="comanda" element={<ComandaPage />} />
+              <Route path="pagamento" element={<p className="text-tinta-suave">O pagamento por Pix chega no item 12.</p>} />
+            </Route>
 
-          <Route
-            path="/cozinha"
-            element={
-              <Protegida papeis={OPERACAO}>
-                <EmBreve titulo="Pedidos" item={7} />
-              </Protegida>
-            }
-          />
+            <Route path="/login" element={<LoginPage />} />
 
-          <Route path="/gerencia" element={<Navigate to="/gerencia/cardapio" replace />} />
-          <Route
-            path="/gerencia/cardapio"
-            element={
-              <Protegida papeis={GERENCIA}>
-                <CardapioGerenciaPage />
-              </Protegida>
-            }
-          />
-          <Route
-            path="/gerencia/*"
-            element={
-              <Protegida papeis={GERENCIA}>
-                <EmBreve titulo="Gerência" item={11} />
-              </Protegida>
-            }
-          />
+            <Route
+              path="/cozinha"
+              element={
+                <Protegida papeis={OPERACAO}>
+                  <EmBreve titulo="Pedidos" item={7} />
+                </Protegida>
+              }
+            />
 
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
-      </Suspense>
+            <Route path="/gerencia" element={<Navigate to="/gerencia/cardapio" replace />} />
+            <Route
+              path="/gerencia/cardapio"
+              element={
+                <Protegida papeis={GERENCIA}>
+                  <CardapioGerenciaPage />
+                </Protegida>
+              }
+            />
+            <Route
+              path="/gerencia/*"
+              element={
+                <Protegida papeis={GERENCIA}>
+                  <EmBreve titulo="Gerência" item={11} />
+                </Protegida>
+              }
+            />
+
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </Suspense>
+      </ConfigProvider>
     </AuthProvider>
   )
 }

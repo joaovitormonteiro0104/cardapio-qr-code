@@ -1085,6 +1085,8 @@ Decisões **confirmadas pelo dono do produto em 2026-11-09**:
 | 9 | Cozinha ignora pedido sem itens (envio interrompido entre o INSERT do pedido e dos itens); o auto-cancelamento limpa esses pedidos depois. Nada de lógica no banco pra isso | 6, 7, 9 |
 | 10 | (2026-11-10) Função `comanda_aberta_da_mesa(numero)` pra o cliente achar a comanda aberta da mesa e entrar nela (§7). O `comandaRepo` gera o `id` da comanda no navegador (`crypto.randomUUID()`) e insere SEM `.select()`: o cliente só enxerga a comanda depois de criar a `sessoes_mesa` | 3, 6 |
 | 11 | (2026-11-10) Operação lê todas as mesas, inclusive inativas | 3, 7 |
+| 14 | (2026-11-10) `itens_pedido.nome_snapshot` congela o nome do item no envio (como o preço): o cliente não lê itens esgotados/inativos pela RLS e uma renomeação não pode mudar o histórico. `pedidos.criado_por` guarda o `auth.uid()` de quem enviou, pra cozinha mostrar o nome do cliente (PRD CLI-07). Realtime ligado em `comandas`, `pedidos` e `itens_pedido` | 6, 7 |
+| 15 | (2026-11-10) O nome opcional do cliente é pedido ANTES de entrar na comanda (vai no INSERT de `sessoes_mesa`); assim não precisa de política de UPDATE em `sessoes_mesa` pro cliente | 6 |
 | 13 | (2026-11-10) `authRepo.getPapelAtual()` usa `supabase.rpc('papel_atual')`: o funcionário de operação não precisa ler a tabela `funcionarios`, e a RLS de §7 fica como está | 4 |
 | 12 | (2026-11-10) `config.toml` alinhado aos valores do projeto remoto (confirmação de email ligada, MFA TOTP ligado, pool etc.); só o login anônimo mudou no remoto. Comandos do CLI 3 contra o projeto usam `--remote` (o padrão é o banco local, que exige Docker) | 3 |
 
