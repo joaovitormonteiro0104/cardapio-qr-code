@@ -1085,6 +1085,7 @@ Decisões **confirmadas pelo dono do produto em 2026-11-09**:
 | 9 | Cozinha ignora pedido sem itens (envio interrompido entre o INSERT do pedido e dos itens); o auto-cancelamento limpa esses pedidos depois. Nada de lógica no banco pra isso | 6, 7, 9 |
 | 10 | (2026-11-10) Função `comanda_aberta_da_mesa(numero)` pra o cliente achar a comanda aberta da mesa e entrar nela (§7). O `comandaRepo` gera o `id` da comanda no navegador (`crypto.randomUUID()`) e insere SEM `.select()`: o cliente só enxerga a comanda depois de criar a `sessoes_mesa` | 3, 6 |
 | 11 | (2026-11-10) Operação lê todas as mesas, inclusive inativas | 3, 7 |
+| 13 | (2026-11-10) `authRepo.getPapelAtual()` usa `supabase.rpc('papel_atual')`: o funcionário de operação não precisa ler a tabela `funcionarios`, e a RLS de §7 fica como está | 4 |
 | 12 | (2026-11-10) `config.toml` alinhado aos valores do projeto remoto (confirmação de email ligada, MFA TOTP ligado, pool etc.); só o login anônimo mudou no remoto. Comandos do CLI 3 contra o projeto usam `--remote` (o padrão é o banco local, que exige Docker) | 3 |
 
 Ainda em aberto:
@@ -1092,7 +1093,6 @@ Ainda em aberto:
 | # | Decisão | Afeta item |
 |---|---|---|
 | A | Lib de QR/Pix. Inclinação atual: payload BR Code montado à mão (TS puro + CRC16, testado) e lib `qrcode` só pra desenhar. Decidir no início do item 12 | 12, 13 |
-| B | Funcionário de `operacao` não lê a própria linha em `funcionarios` (§7 só dá SELECT à gerência). Opções: `authRepo.getPapelAtual()` chamar `supabase.rpc('papel_atual')`, ou nova política "funcionário lê o próprio cadastro" (se a UI precisar do nome). Decidir no item 4 | 4 |
 | C | "Fechar mesa" (§6.4) encerra `sessoes_mesa`, mas §7 não dá UPDATE em `sessoes_mesa` à operação. Decidir no item 12: nova política de UPDATE pra operação, ou não gravar `encerrada_em` | 12 |
 
 ---
