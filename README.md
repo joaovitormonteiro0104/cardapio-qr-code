@@ -42,3 +42,23 @@ Isso cria **dados**, não schema, por isso pode ser feito pelo dashboard. Nunca 
 npm test                                                           # regras de domínio e schemas
 npx supabase db query --remote --yes -f supabase/testes/rls_roteiro.sql   # RLS (desfaz tudo no fim)
 ```
+
+## Edge Function `equipe`
+
+Única função do servidor (cria funcionário, troca PIN, desativa). Usa a `service_role`, que nunca vai pro navegador. Para publicar depois de mudar `supabase/functions/equipe/index.ts` ou `src/domain/equipe/regras.ts`:
+
+```powershell
+npx supabase functions deploy equipe --use-api
+```
+
+`--use-api` empacota no servidor do Supabase, sem precisar de Docker.
+
+## Comandos do Supabase CLI contra o projeto
+
+O CLI 3 usa o banco **local** por padrão. Contra o projeto remoto, passe `--remote`:
+
+```powershell
+npx supabase db push --remote          # aplica migrations novas
+npx supabase migration list --remote   # confere local x remoto
+npx supabase db advisors --remote      # avisos de segurança e performance
+```

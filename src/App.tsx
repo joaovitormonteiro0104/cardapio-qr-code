@@ -3,7 +3,6 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '@/components/AuthProvider'
 import { Carregando } from '@/components/Carregando'
 import { ConfigProvider } from '@/components/ConfigProvider'
-import { LayoutEquipe } from '@/components/LayoutEquipe'
 import { RotaProtegida } from '@/components/RotaProtegida'
 import type { Papel } from '@/schemas/auth'
 
@@ -19,6 +18,7 @@ const ContasPage = lazy(() => import('@/pages/cozinha/ContasPage'))
 const PagamentoPage = lazy(() => import('@/pages/mesa/PagamentoPage'))
 const ConfigPage = lazy(() => import('@/pages/gerencia/ConfigPage'))
 const MesasPage = lazy(() => import('@/pages/gerencia/MesasPage'))
+const EquipePage = lazy(() => import('@/pages/gerencia/EquipePage'))
 
 const OPERACAO: readonly Papel[] = ['operacao', 'gerencia']
 const GERENCIA: readonly Papel[] = ['gerencia']
@@ -27,13 +27,6 @@ function Protegida({ papeis, children }: { papeis: readonly Papel[]; children: R
   return <RotaProtegida papeis={papeis}>{children}</RotaProtegida>
 }
 
-function EmBreve({ titulo, item }: { titulo: string; item: number }) {
-  return (
-    <LayoutEquipe titulo={titulo}>
-      <p className="text-tinta-suave">Esta tela chega no item {item} do roadmap.</p>
-    </LayoutEquipe>
-  )
-}
 
 export default function App() {
   return (
@@ -93,6 +86,14 @@ export default function App() {
               }
             />
             <Route
+              path="/gerencia/equipe"
+              element={
+                <Protegida papeis={GERENCIA}>
+                  <EquipePage />
+                </Protegida>
+              }
+            />
+            <Route
               path="/gerencia/auditoria"
               element={
                 <Protegida papeis={GERENCIA}>
@@ -104,7 +105,7 @@ export default function App() {
               path="/gerencia/*"
               element={
                 <Protegida papeis={GERENCIA}>
-                  <EmBreve titulo="Gerência" item={11} />
+                  <Navigate to="/gerencia/cardapio" replace />
                 </Protegida>
               }
             />
