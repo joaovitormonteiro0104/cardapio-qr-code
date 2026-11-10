@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { acaoDisponivel, dentroDaJanelaLivre, fimDaJanelaLivre } from '@/domain/pedido/edicao'
+import { acaoDisponivel, dentroDaJanelaLivre, fimDaJanelaLivre, podeEditarItens, remocaoEsvaziaPedido } from '@/domain/pedido/edicao'
 import type { EstadoPedido } from '@/domain/pedido/estado'
 
 const INICIO = new Date('2026-11-10T12:00:00.000Z')
@@ -64,5 +64,33 @@ describe('fimDaJanelaLivre', () => {
 
   it('não existe nos outros estados', () => {
     expect(fimDaJanelaLivre(p('Recebido'), configs)).toBeNull()
+  })
+})
+
+describe('podeEditarItens', () => {
+  it('cliente: só na janela livre', () => {
+    expect(podeEditarItens(p('Recebido'), 'cliente', configs, INICIO)).toBe(true)
+    expect(podeEditarItens(p('Preparando'), 'cliente', configs, depois(2 * MIN))).toBe(false)
+    expect(podeEditarItens(p('EdicaoSolicitada'), 'cliente', configs, INICIO)).toBe(false)
+  })
+
+  it('funcionário: só em EdicaoSolicitada', () => {
+    expect(podeEditarItens(p('EdicaoSolicitada'), 'funcionario', configs, INICIO)).toBe(true)
+    expect(podeEditarItens(p('Recebido'), 'funcionario', configs, INICIO)).toBe(false)
+    expect(podeEditarItens(p('Preparando'), 'funcionario', configs, INICIO)).toBe(false)
+  })
+})
+
+describe('remocaoEsvaziaPedido', () => {
+  const ativo = (id: string) => ({ id, removidoEm: null })
+  const removido = (id: string) => ({ id, removidoEm: INICIO })
+
+  it('último item ativo esvazia', () => {
+    expect(remocaoEsvaziaPedido([ativo('a'), removido('b')], 'a')).toBe(true)
+    expect(remocaoEsvaziaPedido([ativo('a')], 'a')).toBe(true)
+  })
+
+  it('com outro item ativo não esvazia', () => {
+    expect(remocaoEsvaziaPedido([ativo('a'), ativo('b')], 'a')).toBe(false)
   })
 })

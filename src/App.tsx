@@ -13,6 +13,7 @@ const MesaLayout = lazy(() => import('@/pages/mesa/MesaLayout'))
 const CardapioClientePage = lazy(() => import('@/pages/mesa/CardapioPage'))
 const ComandaPage = lazy(() => import('@/pages/mesa/ComandaPage'))
 const CardapioGerenciaPage = lazy(() => import('@/pages/gerencia/CardapioPage'))
+const PedidosCozinhaPage = lazy(() => import('@/pages/cozinha/PedidosPage'))
 
 const OPERACAO: readonly Papel[] = ['operacao', 'gerencia']
 const GERENCIA: readonly Papel[] = ['gerencia']
@@ -47,7 +48,7 @@ export default function App() {
               path="/cozinha"
               element={
                 <Protegida papeis={OPERACAO}>
-                  <EmBreve titulo="Pedidos" item={7} />
+                  <PedidosCozinhaPage />
                 </Protegida>
               }
             />

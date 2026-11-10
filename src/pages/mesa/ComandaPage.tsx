@@ -1,19 +1,57 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { EditarItensModal } from '@/components/EditarItensModal'
 import { EstadoPedidoBadge } from '@/components/EstadoPedidoBadge'
+import { Modal } from '@/components/Modal'
+import type { ConfigsTempo } from '@/domain/config'
 import { totalComanda, totalPedido } from '@/domain/pedido/calculo'
+import { acaoDisponivel, fimDaJanelaLivre } from '@/domain/pedido/edicao'
+import { useAgora } from '@/hooks/usePedidosCozinha'
 import { formatarHora, formatarReal } from '@/lib/formato'
 import * as comandaRepo from '@/repositories/comandaRepo'
+import * as pedidoRepo from '@/repositories/pedidoRepo'
 import { OBSERVACAO_MAX } from '@/schemas/comanda'
 import type { Pedido } from '@/schemas/pedido'
 import { useMesa } from './MesaLayout'
 
+type Confirmacao = { tipo: 'cancelar' | 'chamar'; pedido: Pedido } | null
+
+function mensagemErro(falha: unknown): string {
+  if (falha instanceof pedidoRepo.ErroConcorrencia || falha instanceof pedidoRepo.ErroRegra) return falha.message
+  return 'Não foi possível salvar. Verifique a internet e tente de novo.'
+}
+
 export default function ComandaPage() {
-  const { comanda, pedidos, atualizarComanda } = useMesa()
+  const { comanda, pedidos, configs, atualizarComanda, recarregar } = useMesa()
+  const agora = useAgora(1000)
+  const [editando, setEditando] = useState<string | null>(null)
+  const [confirmacao, setConfirmacao] = useState<Confirmacao>(null)
+  const [enviando, setEnviando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+
   if (!comanda) return null
 
   const total = totalComanda(pedidos)
   const visiveis = [...pedidos].reverse() // mais recente primeiro
+  const pedidoEditando = pedidos.find(p => p.id === editando) ?? null
+
+  async function confirmar() {
+    if (!confirmacao || !configs) return
+    setEnviando(true)
+    setErro(null)
+    try {
+      if (confirmacao.tipo === 'cancelar') await pedidoRepo.cancelarPeloCliente(confirmacao.pedido.id, configs)
+      else await pedidoRepo.solicitarEdicao(confirmacao.pedido.id)
+      setConfirmacao(null)
+      await recarregar()
+    } catch (falha) {
+      console.error(falha)
+      setErro(mensagemErro(falha))
+      await recarregar()
+    } finally {
+      setEnviando(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -27,7 +65,15 @@ export default function ComandaPage() {
       ) : (
         <ol className="space-y-3" aria-label="Pedidos da mesa">
           {visiveis.map(pedido => (
-            <CartaoPedido key={pedido.id} pedido={pedido} />
+            <CartaoPedido
+              key={pedido.id}
+              pedido={pedido}
+              configs={configs}
+              agora={agora}
+              aoEditar={() => setEditando(pedido.id)}
+              aoCancelar={() => setConfirmacao({ tipo: 'cancelar', pedido })}
+              aoChamar={() => setConfirmacao({ tipo: 'chamar', pedido })}
+            />
           ))}
         </ol>
       )}
@@ -41,12 +87,77 @@ export default function ComandaPage() {
         valorInicial={comanda.observacao ?? ''}
         aoSalvar={async texto => atualizarComanda(await comandaRepo.atualizarObservacao(comanda, texto))}
       />
+
+      {configs && (
+        <EditarItensModal
+          pedido={pedidoEditando}
+          ajuda="Você pode mudar enquanto a cozinha não começou ou logo no início do preparo."
+          permitirEsvaziar
+          aoFechar={() => setEditando(null)}
+          aoAlterarQuantidade={async (itemId, q) => {
+            if (!pedidoEditando) return
+            await pedidoRepo.alterarQuantidadeItem(pedidoEditando.id, itemId, q, configs)
+            await recarregar()
+          }}
+          aoRemover={async itemId => {
+            if (!pedidoEditando) return
+            await pedidoRepo.removerItemDoPedido(pedidoEditando.id, itemId, configs)
+            await recarregar()
+          }}
+        />
+      )}
+
+      <Modal
+        aberto={confirmacao !== null}
+        titulo={confirmacao?.tipo === 'cancelar' ? 'Cancelar pedido?' : 'Chamar o garçom?'}
+        aoFechar={() => {
+          setConfirmacao(null)
+          setErro(null)
+        }}
+        acoes={
+          <>
+            <button type="button" className="botao-secundario" onClick={() => setConfirmacao(null)}>
+              Voltar
+            </button>
+            <button
+              type="button"
+              className={confirmacao?.tipo === 'cancelar' ? 'botao-perigo' : 'botao-primario'}
+              disabled={enviando}
+              onClick={() => void confirmar()}
+            >
+              {enviando ? 'Enviando…' : confirmacao?.tipo === 'cancelar' ? 'Cancelar pedido' : 'Chamar garçom'}
+            </button>
+          </>
+        }
+      >
+        <p>
+          {confirmacao?.tipo === 'cancelar'
+            ? `O pedido #${confirmacao.pedido.numero} sai da conta e da fila da cozinha.`
+            : `A cozinha já está preparando o pedido #${confirmacao?.pedido.numero ?? ''}. Um garçom vem até a mesa para ver o que dá para mudar.`}
+        </p>
+        <p role="alert" className="mt-2 min-h-5 text-sm font-medium text-perigo">
+          {erro}
+        </p>
+      </Modal>
     </div>
   )
 }
 
-function CartaoPedido({ pedido }: { pedido: Pedido }) {
+interface PropsCartao {
+  pedido: Pedido
+  configs: ConfigsTempo | null
+  agora: Date
+  aoEditar: () => void
+  aoCancelar: () => void
+  aoChamar: () => void
+}
+
+function CartaoPedido({ pedido, configs, agora, aoEditar, aoCancelar, aoChamar }: PropsCartao) {
   const cancelado = pedido.estado === 'Cancelado'
+  const acao = configs ? acaoDisponivel(pedido, configs, agora) : 'bloqueado'
+  const fim = configs ? fimDaJanelaLivre(pedido, configs) : null
+  const segundos = fim && acao === 'editar_livre' ? Math.max(0, Math.ceil((fim.getTime() - agora.getTime()) / 1000)) : null
+
   return (
     <li className="rounded-2xl bg-superficie px-4 py-3 shadow-sm ring-1 ring-borda">
       <div className="flex items-center justify-between gap-3">
@@ -70,6 +181,32 @@ function CartaoPedido({ pedido }: { pedido: Pedido }) {
         <p className="mt-2 border-t border-borda pt-2 text-right text-sm font-semibold tabular-nums">
           {formatarReal(totalPedido(pedido))}
         </p>
+      )}
+      {pedido.estado === 'EdicaoSolicitada' && (
+        <p className="mt-2 text-sm text-brasa-forte">Um garçom está a caminho para ajustar este pedido.</p>
+      )}
+
+      {acao === 'editar_livre' && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button type="button" className="botao-secundario text-sm" onClick={aoEditar}>
+            Editar
+          </button>
+          <button type="button" className="botao-secundario text-sm text-perigo" onClick={aoCancelar}>
+            Cancelar pedido
+          </button>
+          {segundos !== null && (
+            <span className="text-xs tabular-nums text-tinta-suave">
+              Dá para mudar por mais {Math.floor(segundos / 60)}:{String(segundos % 60).padStart(2, '0')}
+            </span>
+          )}
+        </div>
+      )}
+      {acao === 'solicitar_edicao' && (
+        <div className="mt-3">
+          <button type="button" className="botao-secundario text-sm" onClick={aoChamar}>
+            Chamar garçom para mudar
+          </button>
+        </div>
       )}
     </li>
   )

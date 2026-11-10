@@ -48,3 +48,29 @@ export function acaoDisponivel(
   if (pedido.estado === 'Preparando' || pedido.estado === 'Pronto') return 'solicitar_edicao'
   return 'bloqueado'
 }
+
+/**
+ * Quem pode mexer nos itens (quantidade/remover) agora:
+ *  - cliente: só dentro da janela livre
+ *  - funcionário: só com o pedido em EdicaoSolicitada (garçom aplicando a edição)
+ */
+export function podeEditarItens(
+  pedido: PedidoNoTempo,
+  quem: 'cliente' | 'funcionario',
+  configs: Pick<ConfigsTempo, 'janelaEdicaoPreparandoMin'>,
+  agora: Date,
+): boolean {
+  if (quem === 'funcionario') return pedido.estado === 'EdicaoSolicitada'
+  return dentroDaJanelaLivre(pedido, configs, agora)
+}
+
+/**
+ * Remover este item deixa o pedido sem nenhum item ativo? Nesse caso a
+ * remoção vira cancelamento do pedido inteiro (mesmas regras, §6.5).
+ */
+export function remocaoEsvaziaPedido(
+  itens: readonly { id: string; removidoEm: Date | null }[],
+  itemId: string,
+): boolean {
+  return itens.every(item => item.id === itemId || item.removidoEm !== null)
+}

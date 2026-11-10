@@ -24,6 +24,7 @@ export const PedidoSchema = z.object({
   estadoDesde: DataHoraSchema,
   criadoEm: DataHoraSchema,
   criadoPor: z.uuid().nullable(),
+  cancelamentoMotivo: z.string().nullable(),
   itens: z.array(ItemPedidoSchema),
 })
 export type Pedido = z.infer<typeof PedidoSchema>
