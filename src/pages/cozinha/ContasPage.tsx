@@ -134,7 +134,7 @@ export default function ContasPage() {
                           <p className="text-xl font-bold tabular-nums">{formatarReal(total)}</p>
                         </div>
                         <p className="mt-1 text-sm tabular-nums text-tinta-suave">
-                          conta #{comanda.numero} · {item.pedidos.length} pedido(s) · última atividade há {parado}
+                          conta #{comanda.numero} · {item.pedidos.length} pedido(s) · última atividade {parado === 'agora' ? 'agora' : `há ${parado}`}
                         </p>
                         {inativa && (
                           <p className="mt-2 rounded-lg bg-alerta-clara px-3 py-1.5 text-sm">
