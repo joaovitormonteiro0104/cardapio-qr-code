@@ -6,7 +6,7 @@ import * as pedidoRepo from '@/repositories/pedidoRepo'
 import type { Comanda, Mesa } from '@/schemas/comanda'
 import type { Pedido } from '@/schemas/pedido'
 
-export type FaseMesa = 'carregando' | 'mesa_indisponivel' | 'pedir_nome' | 'pronta' | 'erro'
+export type FaseMesa = 'carregando' | 'mesa_indisponivel' | 'pedir_nome' | 'pronta' | 'encerrada' | 'erro'
 
 export interface EstadoComandaCliente {
   fase: FaseMesa
@@ -77,7 +77,12 @@ export function useComanda(numeroMesa: number): EstadoComandaCliente {
         comandaRepo.buscarComanda(comandaId),
         pedidoRepo.listarPedidosDaComanda(comandaId),
       ])
-      if (atual) setComanda(atual)
+      // Mesa fechada: a sessão foi encerrada e a RLS já não mostra a comanda.
+      if (!atual || atual.estado === 'Fechada') {
+        setFase('encerrada')
+        return
+      }
+      setComanda(atual)
       setPedidos(lista)
     } catch (falha) {
       console.error(falha)

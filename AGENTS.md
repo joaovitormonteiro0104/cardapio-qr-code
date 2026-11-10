@@ -71,8 +71,8 @@ Desenvolvedor é iniciante usando Windows + VS Code + PowerShell, aprendendo Nod
 | Backup | GitHub Action diária com `pg_dump` → Backblaze B2 ou S3 |
 | Qualidade visual (dev) | [Impeccable](https://github.com/pbakaus/impeccable) — ver [§11.4](#114-qualidade-visual-impeccable) |
 
-**Dependências de runtime** (`dependencies`): `react`, `react-dom`, `react-router-dom`, `@supabase/supabase-js`, `zod`.
-**Dependências de desenvolvimento** (`devDependencies`): `typescript`, `vite`, `@vitejs/plugin-react`, `tailwindcss`, `@tailwindcss/vite`, `vitest`, `@types/react`, `@types/react-dom`, `supabase` (CLI), `impeccable`.
+**Dependências de runtime** (`dependencies`): `react`, `react-dom`, `react-router-dom`, `@supabase/supabase-js`, `zod`, `qrcode` (decisão 16).
+**Dependências de desenvolvimento** (`devDependencies`): `typescript`, `vite`, `@vitejs/plugin-react`, `tailwindcss`, `@tailwindcss/vite`, `vitest`, `@types/react`, `@types/react-dom`, `supabase` (CLI), `impeccable`, `@types/qrcode`.
 
 Versões fixadas no item 1 (2026-11-09): React **18** (`react`, `react-dom`, `@types/*` na linha 18, como diz a tabela acima), Zod 4, TypeScript 7, Vite 8, Vitest 5, Tailwind 4. A sintaxe Zod dos exemplos deste arquivo (`z.string().uuid()`, `.datetime()`) ainda funciona no Zod 4; em código novo prefira as formas do v4 (`z.uuid()`, `z.iso.datetime({ offset: true })`).
 
@@ -387,10 +387,11 @@ language sql stable security definer set search_path = public as $$
   select papel from funcionarios where usuario_id = auth.uid() and ativo
 $$;
 
--- comandas às quais o usuário (cliente anônimo) está vinculado
+-- comandas às quais o usuário (cliente anônimo) está vinculado por sessão
+-- não encerrada (decisão 17: fechar a mesa corta o acesso)
 create function public.minhas_comandas() returns setof uuid
 language sql stable security definer set search_path = public as $$
-  select comanda_id from sessoes_mesa where usuario_id = auth.uid()
+  select comanda_id from sessoes_mesa where usuario_id = auth.uid() and encerrada_em is null
 $$;
 ```
 
@@ -428,6 +429,7 @@ As três funções têm `execute` revogado de `anon` e liberado só pra `authent
 **Operação** (`papel_atual() in ('operacao', 'gerencia')`):
 - SELECT em todas as comandas, pedidos, itens_pedido, sessoes_mesa
 - UPDATE em comandas, pedidos, itens_pedido
+- UPDATE em sessoes_mesa (preencher `encerrada_em` ao fechar a mesa, decisão 17)
 - SELECT em itens_cardapio e categorias (inclusive indisponíveis), pra exibir pedidos antigos
 - SELECT em mesas (inclusive inativas), pra cozinha ver o número de uma mesa desativada com comanda aberta (decisão 11 de §15)
 
@@ -1086,16 +1088,14 @@ Decisões **confirmadas pelo dono do produto em 2026-11-09**:
 | 10 | (2026-11-10) Função `comanda_aberta_da_mesa(numero)` pra o cliente achar a comanda aberta da mesa e entrar nela (§7). O `comandaRepo` gera o `id` da comanda no navegador (`crypto.randomUUID()`) e insere SEM `.select()`: o cliente só enxerga a comanda depois de criar a `sessoes_mesa` | 3, 6 |
 | 11 | (2026-11-10) Operação lê todas as mesas, inclusive inativas | 3, 7 |
 | 14 | (2026-11-10) `itens_pedido.nome_snapshot` congela o nome do item no envio (como o preço): o cliente não lê itens esgotados/inativos pela RLS e uma renomeação não pode mudar o histórico. `pedidos.criado_por` guarda o `auth.uid()` de quem enviou, pra cozinha mostrar o nome do cliente (PRD CLI-07). Realtime ligado em `comandas`, `pedidos` e `itens_pedido` | 6, 7 |
+| 16 | (2026-11-10) Decisão A: payload BR Code do Pix montado à mão em `src/domain/pagamento/pix.ts` (TLV + CRC16, testado contra o exemplo do manual do Banco Central); lib `qrcode` (MIT) só pra desenhar o QR | 12, 13 |
+| 17 | (2026-11-10) Decisão C: "fechar mesa" preenche `sessoes_mesa.encerrada_em` (nova política de UPDATE pra operação) e `minhas_comandas()` ignora sessões encerradas: depois do fechamento a RLS corta o acesso do celular à comanda antiga | 3, 12 |
+| 18 | (2026-11-10) `pedidos.cancelamento_motivo` guarda o motivo entre as 2 etapas do cancelamento (operação não lê `eventos_auditoria`) | 10 |
 | 15 | (2026-11-10) O nome opcional do cliente é pedido ANTES de entrar na comanda (vai no INSERT de `sessoes_mesa`); assim não precisa de política de UPDATE em `sessoes_mesa` pro cliente | 6 |
 | 13 | (2026-11-10) `authRepo.getPapelAtual()` usa `supabase.rpc('papel_atual')`: o funcionário de operação não precisa ler a tabela `funcionarios`, e a RLS de §7 fica como está | 4 |
 | 12 | (2026-11-10) `config.toml` alinhado aos valores do projeto remoto (confirmação de email ligada, MFA TOTP ligado, pool etc.); só o login anônimo mudou no remoto. Comandos do CLI 3 contra o projeto usam `--remote` (o padrão é o banco local, que exige Docker) | 3 |
 
-Ainda em aberto:
-
-| # | Decisão | Afeta item |
-|---|---|---|
-| A | Lib de QR/Pix. Inclinação atual: payload BR Code montado à mão (TS puro + CRC16, testado) e lib `qrcode` só pra desenhar. Decidir no início do item 12 | 12, 13 |
-| C | "Fechar mesa" (§6.4) encerra `sessoes_mesa`, mas §7 não dá UPDATE em `sessoes_mesa` à operação. Decidir no item 12: nova política de UPDATE pra operação, ou não gravar `encerrada_em` | 12 |
+Ainda em aberto: nenhuma no momento. A escolha entre Backblaze B2 e S3 pro backup é feita no item 16.
 
 ---
 

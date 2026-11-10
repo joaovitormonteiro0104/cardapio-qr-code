@@ -15,6 +15,8 @@ const ComandaPage = lazy(() => import('@/pages/mesa/ComandaPage'))
 const CardapioGerenciaPage = lazy(() => import('@/pages/gerencia/CardapioPage'))
 const PedidosCozinhaPage = lazy(() => import('@/pages/cozinha/PedidosPage'))
 const AuditoriaPage = lazy(() => import('@/pages/gerencia/AuditoriaPage'))
+const ContasPage = lazy(() => import('@/pages/cozinha/ContasPage'))
+const PagamentoPage = lazy(() => import('@/pages/mesa/PagamentoPage'))
 
 const OPERACAO: readonly Papel[] = ['operacao', 'gerencia']
 const GERENCIA: readonly Papel[] = ['gerencia']
@@ -40,7 +42,7 @@ export default function App() {
             <Route path="/mesa/:numero" element={<MesaLayout />}>
               <Route index element={<CardapioClientePage />} />
               <Route path="comanda" element={<ComandaPage />} />
-              <Route path="pagamento" element={<p className="text-tinta-suave">O pagamento por Pix chega no item 12.</p>} />
+              <Route path="pagamento" element={<PagamentoPage />} />
             </Route>
 
             <Route path="/login" element={<LoginPage />} />
@@ -50,6 +52,15 @@ export default function App() {
               element={
                 <Protegida papeis={OPERACAO}>
                   <PedidosCozinhaPage />
+                </Protegida>
+              }
+            />
+
+            <Route
+              path="/cozinha/contas"
+              element={
+                <Protegida papeis={OPERACAO}>
+                  <ContasPage />
                 </Protegida>
               }
             />

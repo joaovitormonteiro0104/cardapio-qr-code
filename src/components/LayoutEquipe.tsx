@@ -7,7 +7,10 @@ interface Link {
   texto: string
 }
 
-const LINKS_OPERACAO: Link[] = [{ para: '/cozinha', texto: 'Pedidos' }]
+const LINKS_OPERACAO: Link[] = [
+  { para: '/cozinha', texto: 'Pedidos' },
+  { para: '/cozinha/contas', texto: 'Contas' },
+]
 
 const LINKS_GERENCIA: Link[] = [
   { para: '/gerencia/cardapio', texto: 'Cardápio' },

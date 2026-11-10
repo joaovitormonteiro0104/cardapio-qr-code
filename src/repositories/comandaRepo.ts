@@ -1,7 +1,17 @@
 import { supabase } from './supabase'
 import * as auditoriaRepo from './auditoriaRepo'
-import { criarEvento } from '@/domain/auditoria/evento'
+import { criarEvento, type Ator } from '@/domain/auditoria/evento'
+import {
+  motivoNaoPodeFechar,
+  podeInformarPagamento,
+  transicaoComandaValida,
+  type EstadoComanda,
+  type MotivoNaoFecha,
+} from '@/domain/comanda/estado'
+import type { PedidoCalculo } from '@/domain/pedido/calculo'
 import { ComandaSchema, NomeClienteSchema, ObservacaoSchema, type Comanda, type Mesa } from '@/schemas/comanda'
+import { EstadoPedidoSchema } from '@/schemas/pedido'
+import { DataHoraOpcionalSchema } from '@/schemas/comum'
 
 const COLUNAS = 'id, numero, mesa_id, estado, observacao, ultima_atividade_em, criado_em'
 
@@ -172,3 +182,163 @@ export function assinarComanda(comandaId: string, callbacks: CallbacksAssinatura
     })
   return () => void supabase.removeChannel(canal)
 }
+
+// ===========================================================================
+// Pagamento e fechamento (item 12)
+// ===========================================================================
+
+export class ErroComanda extends Error {
+  constructor(mensagem: string) {
+    super(mensagem)
+    this.name = 'ErroComanda'
+  }
+}
+
+/** Pedido resumido o bastante para calcular total e pendências. */
+interface LinhaPedidoResumo {
+  numero: number
+  estado: string
+  itens_pedido: { quantidade: number; preco_centavos_snapshot: number; removido_em: string | null }[]
+}
+
+function paraCalculo(linhas: readonly LinhaPedidoResumo[]): (PedidoCalculo & { numero: number })[] {
+  return linhas.map(l => ({
+    numero: l.numero,
+    estado: EstadoPedidoSchema.parse(l.estado),
+    itens: l.itens_pedido.map(i => ({
+      quantidade: i.quantidade,
+      precoCentavosSnapshot: i.preco_centavos_snapshot,
+      removidoEm: DataHoraOpcionalSchema.parse(i.removido_em),
+    })),
+  }))
+}
+
+const RESUMO_PEDIDOS = 'pedidos (numero, estado, itens_pedido (quantidade, preco_centavos_snapshot, removido_em))'
+
+async function lerComandaComPedidos(comandaId: string) {
+  const { data, error } = await supabase
+    .from('comandas')
+    .select(`${COLUNAS}, ${RESUMO_PEDIDOS}`)
+    .eq('id', comandaId)
+    .single()
+  if (error) throw new Error(`lerComandaComPedidos: ${error.message}`)
+  const linha = data as unknown as LinhaComanda & { pedidos: LinhaPedidoResumo[] }
+  return { comanda: paraComanda(linha), pedidos: paraCalculo(linha.pedidos) }
+}
+
+/** Muda o estado da comanda com UPDATE condicional e registra o evento. Devolve false se outro mudou antes. */
+async function mudarEstado(comanda: Comanda, para: EstadoComanda, ator: Ator, extra: Record<string, string> = {}): Promise<boolean> {
+  if (!transicaoComandaValida(comanda.estado, para)) {
+    throw new ErroComanda(`Não é possível ir de ${comanda.estado} para ${para}.`)
+  }
+  const { data, error } = await supabase
+    .from('comandas')
+    .update({ estado: para, ultima_atividade_em: new Date().toISOString(), ...extra })
+    .eq('id', comanda.id)
+    .eq('estado', comanda.estado)
+    .select('id')
+  if (error) throw new Error(`mudarEstado: ${error.message}`)
+  if (!data || data.length === 0) return false
+
+  await auditoriaRepo.registrar(
+    criarEvento(para === 'Fechada' ? 'comanda_fechada' : 'comanda_estado_alterado', ator, {
+      comandaId: comanda.id,
+      payload: { numero: comanda.numero, de: comanda.estado, para },
+    }),
+  )
+  return true
+}
+
+async function mudarOuFalhar(comanda: Comanda, para: EstadoComanda): Promise<void> {
+  const ok = await mudarEstado(comanda, para, await auditoriaRepo.atorDaSessao())
+  if (!ok) throw new ErroComanda('A conta foi alterada por outra pessoa. Recarregue.')
+}
+
+/** Cliente toca "já paguei": Aberta → AguardandoPagamento (para de aceitar pedidos). */
+export async function informarPagamento(comandaId: string): Promise<void> {
+  const { comanda, pedidos } = await lerComandaComPedidos(comandaId)
+  if (!podeInformarPagamento(comanda.estado, pedidos)) throw new ErroComanda('Não há valor a pagar nesta conta.')
+  await mudarOuFalhar(comanda, 'AguardandoPagamento')
+}
+
+/** Caixa conferiu o extrato: AguardandoPagamento → Paga. */
+export async function marcarComoPaga(comandaId: string): Promise<void> {
+  const { comanda } = await lerComandaComPedidos(comandaId)
+  await mudarOuFalhar(comanda, 'Paga')
+}
+
+/** Cliente quer pedir mais: AguardandoPagamento → Aberta. */
+export async function reabrir(comandaId: string): Promise<void> {
+  const { comanda } = await lerComandaComPedidos(comandaId)
+  await mudarOuFalhar(comanda, 'Aberta')
+}
+
+const MENSAGENS_NAO_FECHA: Record<MotivoNaoFecha, string> = {
+  pendentes: 'Ainda há pedidos em andamento nesta mesa.',
+  nao_paga: 'A conta ainda não foi marcada como paga.',
+  ja_fechada: 'Esta mesa já foi fechada.',
+}
+
+/**
+ * "Fechar mesa" (§6.4): valida podeFecharComanda com dados frescos, fecha a
+ * comanda (condicional), passa os pedidos Entregue → Finalizado e encerra as
+ * sessões dos clientes. `ator` = sistema na rotina de inatividade.
+ * Devolve false se outro tablet fechou antes.
+ */
+export async function fecharMesa(comandaId: string, ator?: Ator): Promise<boolean> {
+  const quem = ator ?? (await auditoriaRepo.atorDaSessao())
+  const { comanda, pedidos } = await lerComandaComPedidos(comandaId)
+  const motivo = motivoNaoPodeFechar(comanda.estado, pedidos)
+  if (motivo) throw new ErroComanda(MENSAGENS_NAO_FECHA[motivo])
+
+  if (!(await mudarEstado(comanda, 'Fechada', quem))) return false
+
+  const agora = new Date().toISOString()
+  const { data: finalizados, error: erroPedidos } = await supabase
+    .from('pedidos')
+    .update({ estado: 'Finalizado', estado_desde: agora })
+    .eq('comanda_id', comandaId)
+    .eq('estado', 'Entregue')
+    .select('id, numero')
+  if (erroPedidos) console.error(`fecharMesa: pedidos não finalizados: ${erroPedidos.message}`)
+  for (const p of (finalizados ?? []) as { id: string; numero: number }[]) {
+    await auditoriaRepo.registrar(
+      criarEvento('pedido_estado_alterado', quem, {
+        comandaId,
+        pedidoId: p.id,
+        payload: { numero: p.numero, de: 'Entregue', para: 'Finalizado' },
+      }),
+    )
+  }
+
+  const { error: erroSessoes } = await supabase
+    .from('sessoes_mesa')
+    .update({ encerrada_em: agora })
+    .eq('comanda_id', comandaId)
+    .is('encerrada_em', null)
+  if (erroSessoes) console.error(`fecharMesa: sessões não encerradas: ${erroSessoes.message}`)
+  return true
+}
+
+export interface ComandaOperacao {
+  comanda: Comanda
+  mesaNumero: number
+  pedidos: (PedidoCalculo & { numero: number })[]
+}
+
+/** Comandas não-Fechadas com mesa e pedidos (aba "Contas" e rotina de inatividade). */
+export async function listarComandasAbertas(): Promise<ComandaOperacao[]> {
+  const { data, error } = await supabase
+    .from('comandas')
+    .select(`${COLUNAS}, mesas (numero), ${RESUMO_PEDIDOS}`)
+    .neq('estado', 'Fechada')
+    .order('ultima_atividade_em', { ascending: true })
+  if (error) throw new Error(`listarComandasAbertas: ${error.message}`)
+  const linhas = data as unknown as (LinhaComanda & { mesas: { numero: number } | null; pedidos: LinhaPedidoResumo[] })[]
+  return linhas.map(l => ({
+    comanda: paraComanda(l),
+    mesaNumero: l.mesas?.numero ?? 0,
+    pedidos: paraCalculo(l.pedidos),
+  }))
+}
+

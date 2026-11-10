@@ -114,19 +114,35 @@ begin
       r := r || format(E'5. %s UPDATE eventos_auditoria: passou -> FALHOU\n',
                        case when u = c1 then 'cliente' else 'gerencia' end);
     exception when others then
-      r := r || format(E'5. %s UPDATE eventos_auditoria: bloqueado (%s) -> OK\n',
-                       case when u = c1 then 'cliente' else 'gerencia' end, sqlerrm);
+      r := r || format(E'5. %s UPDATE eventos_auditoria: bloqueado -> OK\n',
+                       case when u = c1 then 'cliente' else 'gerencia' end);
     end;
     begin
       delete from eventos_auditoria;
       r := r || format(E'5. %s DELETE eventos_auditoria: passou -> FALHOU\n',
                        case when u = c1 then 'cliente' else 'gerencia' end);
     exception when others then
-      r := r || format(E'5. %s DELETE eventos_auditoria: bloqueado (%s) -> OK\n',
-                       case when u = c1 then 'cliente' else 'gerencia' end, sqlerrm);
+      r := r || format(E'5. %s DELETE eventos_auditoria: bloqueado -> OK\n',
+                       case when u = c1 then 'cliente' else 'gerencia' end);
     end;
     execute format('set local role %I', dono);
   end loop;
+
+
+  -- 6. Mesa fechada: sessão encerrada corta o acesso à comanda antiga --------
+  update sessoes_mesa set encerrada_em = now() where usuario_id = c1;
+  perform set_config('request.jwt.claims', json_build_object('sub', c1, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  select count(*) into n from comandas where id = com1;
+  r := r || format(E'6. cliente com sessao encerrada le a comanda antiga: %s linha(s) (esperado 0) -> %s\n',
+                   n, case when n = 0 then 'OK' else 'FALHOU' end);
+  begin
+    insert into pedidos (comanda_id) values (com1);
+    r := r || E'6b. cliente com sessao encerrada cria pedido na comanda antiga: passou -> FALHOU\n';
+  exception when others then
+    r := r || format(E'6b. cliente com sessao encerrada cria pedido: bloqueado (%s) -> OK\n', sqlerrm);
+  end;
+  execute format('set local role %I', dono);
 
 
   -- Fim: erro proposital = relatório + desfaz TUDO o que foi criado acima.

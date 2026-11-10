@@ -32,6 +32,7 @@ export default function MesaLayout() {
   if (estado.fase === 'carregando') return <Carregando texto="Abrindo o cardápio…" />
   if (estado.fase === 'mesa_indisponivel') return <MesaIndisponivel />
   if (estado.fase === 'erro') return <ErroConexao />
+  if (estado.fase === 'encerrada') return <MesaEncerrada />
   if (estado.fase === 'pedir_nome') return <PedirNome numeroMesa={numeroMesa} entrar={estado.entrar} />
 
   const nomeCasa = configs?.nomeEstabelecimento || 'Cardápio'
@@ -148,6 +149,18 @@ function PedirNome({ numeroMesa, entrar }: { numeroMesa: number; entrar: (nome: 
           {enviando ? 'Abrindo…' : 'Ver o cardápio'}
         </button>
       </form>
+    </main>
+  )
+}
+
+function MesaEncerrada() {
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 text-center">
+      <h1 className="text-2xl font-bold">Conta encerrada</h1>
+      <p className="mt-2 text-tinta-suave">Esta mesa foi fechada. Obrigado pela visita!</p>
+      <button type="button" className="botao-secundario mx-auto mt-6" onClick={() => window.location.reload()}>
+        Abrir uma nova conta
+      </button>
     </main>
   )
 }
