@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { EditarItensModal } from '@/components/EditarItensModal'
 import { EstadoPedidoBadge } from '@/components/EstadoPedidoBadge'
+import { FotoItem } from '@/components/FotoItem'
 import { Modal } from '@/components/Modal'
 import type { ConfigsTempo } from '@/domain/config'
 import { totalComanda, totalPedido } from '@/domain/pedido/calculo'
@@ -167,10 +168,14 @@ function CartaoPedido({ pedido, configs, agora, aoEditar, aoCancelar, aoChamar }
         </p>
         <EstadoPedidoBadge estado={pedido.estado} />
       </div>
-      <ul className={`mt-2 space-y-1 text-sm ${cancelado ? 'text-tinta-suave line-through' : ''}`}>
+      <ul className={`mt-3 space-y-2 text-sm ${cancelado ? 'text-tinta-suave line-through' : ''}`}>
         {pedido.itens.map(item => (
-          <li key={item.id} className={`flex justify-between gap-3 ${item.removidoEm ? 'text-tinta-suave line-through' : ''}`}>
-            <span>
+          <li
+            key={item.id}
+            className={`flex items-center gap-3 ${item.removidoEm ? 'text-tinta-suave line-through opacity-60' : ''}`}
+          >
+            <FotoItem url={item.fotoUrl} nome={item.nomeSnapshot} className="size-10 rounded-lg" />
+            <span className="min-w-0 flex-1">
               <span className="tabular-nums">{item.quantidade}×</span> {item.nomeSnapshot}
             </span>
             <span className="tabular-nums">{formatarReal(item.quantidade * item.precoCentavosSnapshot)}</span>

@@ -33,7 +33,7 @@ import {
 
 export const COLUNAS_PEDIDO =
   'id, numero, comanda_id, estado, estado_anterior, estado_desde, criado_em, criado_por, cancelamento_motivo, ' +
-  'itens_pedido (id, pedido_id, item_cardapio_id, nome_snapshot, quantidade, preco_centavos_snapshot, removido_em)'
+  'itens_pedido (id, pedido_id, item_cardapio_id, nome_snapshot, quantidade, preco_centavos_snapshot, removido_em, itens_cardapio (foto_url))'
 
 export interface LinhaItemPedido {
   id: string
@@ -43,6 +43,8 @@ export interface LinhaItemPedido {
   quantidade: number
   preco_centavos_snapshot: number
   removido_em: string | null
+  /** Foto atual do item (a RLS devolve null ao cliente se o item saiu do cardápio). */
+  itens_cardapio: { foto_url: string | null } | null
 }
 
 export interface LinhaPedido {
@@ -79,6 +81,7 @@ export function paraPedido(linha: LinhaPedido): Pedido {
         quantidade: item.quantidade,
         precoCentavosSnapshot: item.preco_centavos_snapshot,
         removidoEm: item.removido_em,
+        fotoUrl: item.itens_cardapio?.foto_url ?? null,
       })),
   })
 }

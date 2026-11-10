@@ -12,6 +12,7 @@ export const ItemPedidoSchema = z.object({
   quantidade: z.number().int().positive(),
   precoCentavosSnapshot: z.number().int().positive(),
   removidoEm: DataHoraOpcionalSchema,
+  fotoUrl: z.url().nullable(),
 })
 export type ItemPedido = z.infer<typeof ItemPedidoSchema>
 

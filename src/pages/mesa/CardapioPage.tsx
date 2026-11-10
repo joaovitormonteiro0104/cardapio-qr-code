@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { FotoItem } from '@/components/FotoItem'
 import { Modal } from '@/components/Modal'
 import { Quantidade } from '@/components/Quantidade'
 import { aceitaNovosPedidos } from '@/domain/comanda/estado'
@@ -154,6 +155,7 @@ export default function CardapioPage() {
           <ul className="divide-y divide-borda">
             {linhasCarrinho.map(linha => (
               <li key={linha.itemId} className="flex items-center gap-3 py-3">
+                <FotoItem url={linha.item.fotoUrl} nome={linha.item.nome} className="size-14 rounded-lg" />
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{linha.item.nome}</p>
                   <p className="text-sm tabular-nums text-tinta-suave">
@@ -186,9 +188,7 @@ interface PropsLinha {
 function LinhaCardapio({ item, quantidade, aoMudar, desabilitado }: PropsLinha) {
   return (
     <li className="flex items-center gap-3 py-3">
-      {item.fotoUrl && (
-        <img src={item.fotoUrl} alt="" loading="lazy" className="size-20 shrink-0 rounded-xl bg-borda object-cover" />
-      )}
+      <FotoItem url={item.fotoUrl} nome={item.nome} className="size-20 rounded-xl" />
       <div className="min-w-0 flex-1">
         <p className="font-semibold leading-snug">{item.nome}</p>
         <p className="mt-0.5 tabular-nums text-tinta-suave">{formatarReal(item.precoCentavos)}</p>
