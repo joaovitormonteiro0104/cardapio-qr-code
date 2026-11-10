@@ -59,3 +59,15 @@
 @utility rotulo {
   @apply mb-1 block text-sm font-medium text-tinta;
 }
+
+/* Impressão dos QR Codes das mesas: só os cartões aparecem no papel. */
+@media print {
+  header,
+  h1,
+  .nao-imprimir {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
+}

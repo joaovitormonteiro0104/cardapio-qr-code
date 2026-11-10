@@ -81,7 +81,7 @@ export async function usuarioAtual(): Promise<UsuarioAtual | null> {
 
 /**
  * Papel do usuário logado, ou null se não for funcionário ativo.
- * Usa a função SQL papel_atual() via RPC (decisão B de AGENTS.md §15): assim o
+ * Usa a função SQL papel_atual() via RPC (decisão 13 de AGENTS.md §15): assim o
  * funcionário de operação não precisa ler a tabela funcionarios.
  */
 export async function getPapelAtual(): Promise<Papel | null> {

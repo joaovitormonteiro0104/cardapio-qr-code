@@ -1,5 +1,5 @@
 // Payload do Pix estático no padrão BR Code (EMV MPM), montado à mão
-// (decisão A de AGENTS.md §15). Puro, sem I/O. Referência: Manual de Padrões
+// (decisão 16 de AGENTS.md §15). Puro, sem I/O. Referência: Manual de Padrões
 // para Iniciação do Pix, do Banco Central.
 //
 // Cada campo é TLV: ID (2 dígitos) + tamanho (2 dígitos) + valor. O último

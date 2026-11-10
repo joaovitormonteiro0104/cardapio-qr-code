@@ -9,7 +9,7 @@ interface Props {
   className?: string
 }
 
-/** Desenha um QR Code (lib `qrcode`, decisão A de AGENTS.md §15) como imagem PNG. */
+/** Desenha um QR Code (lib `qrcode`, decisão 16 de AGENTS.md §15) como imagem PNG. */
 export function QrCode({ texto, descricao, tamanho = 240, className = '' }: Props) {
   const [url, setUrl] = useState<string | null>(null)
 

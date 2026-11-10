@@ -17,6 +17,8 @@ const PedidosCozinhaPage = lazy(() => import('@/pages/cozinha/PedidosPage'))
 const AuditoriaPage = lazy(() => import('@/pages/gerencia/AuditoriaPage'))
 const ContasPage = lazy(() => import('@/pages/cozinha/ContasPage'))
 const PagamentoPage = lazy(() => import('@/pages/mesa/PagamentoPage'))
+const ConfigPage = lazy(() => import('@/pages/gerencia/ConfigPage'))
+const MesasPage = lazy(() => import('@/pages/gerencia/MesasPage'))
 
 const OPERACAO: readonly Papel[] = ['operacao', 'gerencia']
 const GERENCIA: readonly Papel[] = ['gerencia']
@@ -71,6 +73,22 @@ export default function App() {
               element={
                 <Protegida papeis={GERENCIA}>
                   <CardapioGerenciaPage />
+                </Protegida>
+              }
+            />
+            <Route
+              path="/gerencia/config"
+              element={
+                <Protegida papeis={GERENCIA}>
+                  <ConfigPage />
+                </Protegida>
+              }
+            />
+            <Route
+              path="/gerencia/mesas"
+              element={
+                <Protegida papeis={GERENCIA}>
+                  <MesasPage />
                 </Protegida>
               }
             />
