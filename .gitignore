@@ -1,0 +1,11 @@
+node_modules
+dist
+.env.local
+.env.*.local
+.impeccable/cache
+# Gerados por "npx impeccable install" em cada máquina (binário de 20 MB + hook pessoal)
+.claude/skills/impeccable/scripts/bin/
+.claude/settings.local.json
+*.tsbuildinfo
+supabase/.temp
+supabase/.branches

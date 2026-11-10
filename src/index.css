@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+/*
+  Tema do Tailwind v4. Cores, fontes e espaçamentos do projeto entram aqui,
+  por exemplo:  --color-marca: oklch(0.65 0.18 40);
+  Fica vazio até a primeira tela de produção.
+*/
+@theme {
+}
