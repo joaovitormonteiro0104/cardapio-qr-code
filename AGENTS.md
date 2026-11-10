@@ -396,6 +396,19 @@ $$;
 
 `security definer` é necessário pra evitar recursão (a função lê uma tabela que também tem RLS). Explique isso no comentário da migration.
 
+Uma terceira função (decisão 10 de §15) deixa o cliente achar a comanda aberta da mesa que escaneou, já que o SELECT em `comandas` só mostra as comandas às quais ele já está vinculado:
+
+```sql
+-- id da comanda não-Fechada de uma mesa ativa, ou null
+create function public.comanda_aberta_da_mesa(numero_mesa integer) returns uuid
+language sql stable security definer set search_path = public as $$
+  select c.id from comandas c join mesas m on m.id = c.mesa_id
+  where m.numero = numero_mesa and m.ativa and c.estado <> 'Fechada'
+$$;
+```
+
+As três funções têm `execute` revogado de `anon` e liberado só pra `authenticated`.
+
 ### Políticas
 
 **Todos os usuários autenticados (inclusive cliente anônimo)**:
@@ -416,6 +429,7 @@ $$;
 - SELECT em todas as comandas, pedidos, itens_pedido, sessoes_mesa
 - UPDATE em comandas, pedidos, itens_pedido
 - SELECT em itens_cardapio e categorias (inclusive indisponíveis), pra exibir pedidos antigos
+- SELECT em mesas (inclusive inativas), pra cozinha ver o número de uma mesa desativada com comanda aberta (decisão 11 de §15)
 
 **Gerência** (`papel_atual() = 'gerencia'`):
 - CRUD em `itens_cardapio`, `categorias`, `mesas`, `configuracoes`
@@ -425,6 +439,10 @@ $$;
 **Ninguém**: UPDATE ou DELETE em `eventos_auditoria`. DELETE em `comandas`, `pedidos`, `itens_pedido`.
 
 **Storage**: bucket `cardapio-fotos` público pra leitura; upload/remoção só `gerencia`.
+
+**Trava extra**: além da ausência de política, os privilégios `update, delete, truncate` em `eventos_auditoria` e `delete, truncate` em `comandas`, `pedidos` e `itens_pedido` são revogados de `anon` e `authenticated` (TRUNCATE não passa pela RLS).
+
+**Teste**: [`supabase/testes/rls_roteiro.sql`](supabase/testes/rls_roteiro.sql) cobre os 5 casos do item 3. Pode ser colado no SQL Editor ou rodado com `npx supabase db query --remote --yes -f supabase/testes/rls_roteiro.sql`; termina com um erro proposital que mostra o relatório e desfaz tudo. Atualize-o quando mudar políticas.
 
 **Regra de ouro**: se uma política RLS precisa de IF/ELSE complexo, você está fazendo errado — esse IF/ELSE pertence a `src/domain/*`.
 
@@ -1065,16 +1083,25 @@ Decisões **confirmadas pelo dono do produto em 2026-11-09**:
 | 7 | Nova config `cidade_estabelecimento` (exigida pelo Pix) | 2, 12 |
 | 8 | Deploy na Vercel e backup saem do item 1 e vão pro item 16 (go-live) | 1, 16 |
 | 9 | Cozinha ignora pedido sem itens (envio interrompido entre o INSERT do pedido e dos itens); o auto-cancelamento limpa esses pedidos depois. Nada de lógica no banco pra isso | 6, 7, 9 |
+| 10 | (2026-11-10) Função `comanda_aberta_da_mesa(numero)` pra o cliente achar a comanda aberta da mesa e entrar nela (§7). O `comandaRepo` gera o `id` da comanda no navegador (`crypto.randomUUID()`) e insere SEM `.select()`: o cliente só enxerga a comanda depois de criar a `sessoes_mesa` | 3, 6 |
+| 11 | (2026-11-10) Operação lê todas as mesas, inclusive inativas | 3, 7 |
+| 12 | (2026-11-10) `config.toml` alinhado aos valores do projeto remoto (confirmação de email ligada, MFA TOTP ligado, pool etc.); só o login anônimo mudou no remoto. Comandos do CLI 3 contra o projeto usam `--remote` (o padrão é o banco local, que exige Docker) | 3 |
 
 Ainda em aberto:
 
 | # | Decisão | Afeta item |
 |---|---|---|
 | A | Lib de QR/Pix. Inclinação atual: payload BR Code montado à mão (TS puro + CRC16, testado) e lib `qrcode` só pra desenhar. Decidir no início do item 12 | 12, 13 |
+| B | Funcionário de `operacao` não lê a própria linha em `funcionarios` (§7 só dá SELECT à gerência). Opções: `authRepo.getPapelAtual()` chamar `supabase.rpc('papel_atual')`, ou nova política "funcionário lê o próprio cadastro" (se a UI precisar do nome). Decidir no item 4 | 4 |
+| C | "Fechar mesa" (§6.4) encerra `sessoes_mesa`, mas §7 não dá UPDATE em `sessoes_mesa` à operação. Decidir no item 12: nova política de UPDATE pra operação, ou não gravar `encerrada_em` | 12 |
 
 ---
 
 ## 16. Histórico de revisões deste arquivo
+
+**Revisão 4 (2026-11-10)** — itens 2 e 3 executados:
+- §7: função `comanda_aberta_da_mesa`, operação lê todas as mesas, trava extra de privilégios, roteiro de teste.
+- §15: decisões 10–12. Em aberto: B (funcionário ler o próprio cadastro) e C (operação encerrar `sessoes_mesa`).
 
 **Revisão 3 (2026-11-09)** — item 1 executado:
 - §15: decisões 1–7 confirmadas; adicionadas 8 (Vercel/backup → item 16) e 9 (pedido sem itens).
