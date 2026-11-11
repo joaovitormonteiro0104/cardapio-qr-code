@@ -38,6 +38,35 @@
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-brasa;
   }
+
+  /*
+    Cursor de "mãozinha" em tudo que é clicável. O Tailwind v4 deixa botões
+    com a seta padrão; aqui voltamos a mãozinha pra deixar claro onde dá pra clicar.
+    Desabilitado mostra o cursor de "proibido".
+  */
+  button,
+  [role='button'],
+  a[href],
+  summary,
+  select,
+  label:has(> input[type='checkbox']),
+  label:has(> input[type='radio']),
+  label:has(> input[type='file']),
+  input[type='checkbox'],
+  input[type='radio'],
+  input[type='file'],
+  [draggable='true'] {
+    cursor: pointer;
+  }
+  [draggable='true'] {
+    cursor: grab;
+  }
+  button:disabled,
+  select:disabled,
+  input:disabled,
+  [aria-disabled='true'] {
+    cursor: not-allowed;
+  }
 }
 
 /* Botões e campos compartilhados. Alvo de toque mínimo de 44px (PRD §9). */
