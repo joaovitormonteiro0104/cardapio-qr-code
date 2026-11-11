@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { LayoutEquipe } from '@/components/LayoutEquipe'
+import { Modal } from '@/components/Modal'
 import { ATOR_SISTEMA } from '@/domain/auditoria/evento'
 import { motivoNaoPodeFechar, temPedidoPendente, type EstadoComanda } from '@/domain/comanda/estado'
 import { comandaInativa, podeFecharAutomaticamente } from '@/domain/comanda/sessao'
@@ -26,6 +27,8 @@ export default function ContasPage() {
   const [carregando, setCarregando] = useState(true)
   const [ocupado, setOcupado] = useState<string | null>(null)
   const [aviso, setAviso] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null)
+  // Marcar como pago e fechar mesa não têm desfazer: pedem confirmação mostrando mesa e valor.
+  const [confirmacao, setConfirmacao] = useState<{ tipo: 'pago' | 'fechar'; item: ComandaOperacao } | null>(null)
 
   const recarregar = useCallback(async () => {
     try {
@@ -148,7 +151,7 @@ export default function ContasPage() {
                                 type="button"
                                 className="botao-primario"
                                 disabled={ocupado === comanda.id}
-                                onClick={() => void executar(comanda.id, () => comandaRepo.marcarComoPaga(comanda.id), `Mesa ${item.mesaNumero} marcada como paga.`)}
+                                onClick={() => setConfirmacao({ tipo: 'pago', item })}
                               >
                                 Marcar como pago
                               </button>
@@ -167,7 +170,7 @@ export default function ContasPage() {
                               type="button"
                               className="botao-primario"
                               disabled={ocupado === comanda.id || naoFecha !== null}
-                              onClick={() => void executar(comanda.id, () => comandaRepo.fecharMesa(comanda.id), `Mesa ${item.mesaNumero} fechada.`)}
+                              onClick={() => setConfirmacao({ tipo: 'fechar', item })}
                             >
                               Fechar mesa
                             </button>
@@ -185,6 +188,50 @@ export default function ContasPage() {
           )
         })}
       </div>
+
+      <Modal
+        aberto={confirmacao !== null}
+        titulo={confirmacao?.tipo === 'pago' ? 'Confirmar pagamento?' : 'Fechar a mesa?'}
+        aoFechar={() => setConfirmacao(null)}
+        acoes={
+          <>
+            <button type="button" className="botao-secundario" onClick={() => setConfirmacao(null)}>
+              Voltar
+            </button>
+            <button
+              type="button"
+              className="botao-primario"
+              onClick={() => {
+                const alvo = confirmacao
+                setConfirmacao(null)
+                if (!alvo) return
+                const { comanda } = alvo.item
+                if (alvo.tipo === 'pago') {
+                  void executar(comanda.id, () => comandaRepo.marcarComoPaga(comanda.id), `Mesa ${alvo.item.mesaNumero} marcada como paga.`)
+                } else {
+                  void executar(comanda.id, () => comandaRepo.fecharMesa(comanda.id), `Mesa ${alvo.item.mesaNumero} fechada.`)
+                }
+              }}
+            >
+              {confirmacao?.tipo === 'pago' ? 'Sim, recebi o Pix' : 'Sim, fechar a mesa'}
+            </button>
+          </>
+        }
+      >
+        {confirmacao && (
+          <>
+            <div className="flex items-baseline justify-between gap-3 rounded-xl bg-fundo px-4 py-3">
+              <span className="text-2xl font-bold tabular-nums">Mesa {confirmacao.item.mesaNumero}</span>
+              <span className="text-2xl font-bold tabular-nums">{formatarReal(totalComanda(confirmacao.item.pedidos))}</span>
+            </div>
+            <p className="mt-3 text-tinta-suave">
+              {confirmacao.tipo === 'pago'
+                ? 'Confira no extrato do banco que este valor entrou antes de confirmar.'
+                : 'A conta é encerrada e os celulares da mesa perdem o acesso. A próxima leitura do QR abre uma conta nova.'}
+            </p>
+          </>
+        )}
+      </Modal>
     </LayoutEquipe>
   )
 }

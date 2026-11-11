@@ -56,3 +56,27 @@ export function motivoParaRegistro(motivo: MotivoCancelamento, textoLivre?: stri
   const texto = (textoLivre ?? '').trim()
   return texto ? `${motivo}: ${texto}` : motivo
 }
+
+/** Valores de cancelamento_motivo gravados pelo sistema e pelo cliente (não pela cozinha). */
+export const MOTIVO_CLIENTE_JANELA = 'cliente_janela_livre'
+export const MOTIVO_AUTO_CANCELAMENTO = 'auto_cancelamento'
+
+/**
+ * Explica ao cliente por que o pedido foi cancelado, a partir de
+ * pedidos.cancelamento_motivo. Mostra só a categoria: o texto livre que a
+ * cozinha digita ("outro: ...") é anotação interna e não vai para o cliente.
+ * null = sem explicação a mostrar.
+ */
+export function motivoCancelamentoParaCliente(registro: string | null): string | null {
+  if (!registro) return null
+  if (registro === MOTIVO_CLIENTE_JANELA) return 'Você cancelou este pedido.'
+  if (registro === MOTIVO_AUTO_CANCELAMENTO) return 'A cozinha não confirmou a tempo. Se ainda quiser, peça de novo.'
+  const categoria = registro.split(':')[0]?.trim() ?? ''
+  if ((MOTIVOS_CANCELAMENTO as readonly string[]).includes(categoria)) {
+    const motivo = categoria as MotivoCancelamento
+    return motivo === 'outro'
+      ? 'Cancelado pela cozinha. Fale com o garçom para saber mais.'
+      : `Cancelado pela cozinha: ${ROTULOS_MOTIVO[motivo].toLowerCase()}.`
+  }
+  return 'Cancelado pela cozinha.'
+}

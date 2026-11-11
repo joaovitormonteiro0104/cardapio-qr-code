@@ -6,6 +6,7 @@ import { FotoItem } from '@/components/FotoItem'
 import { Modal } from '@/components/Modal'
 import type { ConfigsTempo } from '@/domain/config'
 import { totalComanda, totalPedido } from '@/domain/pedido/calculo'
+import { motivoCancelamentoParaCliente } from '@/domain/pedido/cancelamento'
 import { acaoDisponivel, fimDaJanelaLivre } from '@/domain/pedido/edicao'
 import { useAgora } from '@/hooks/usePedidosCozinha'
 import { formatarHora, formatarReal } from '@/lib/formato'
@@ -189,6 +190,11 @@ function CartaoPedido({ pedido, configs, agora, aoEditar, aoCancelar, aoChamar }
       )}
       {pedido.estado === 'EdicaoSolicitada' && (
         <p className="mt-2 text-sm text-brasa-forte">Um garçom está a caminho para ajustar este pedido.</p>
+      )}
+      {cancelado && motivoCancelamentoParaCliente(pedido.cancelamentoMotivo) && (
+        <p className="mt-2 rounded-lg bg-perigo-clara px-3 py-2 text-sm text-perigo">
+          {motivoCancelamentoParaCliente(pedido.cancelamentoMotivo)}
+        </p>
       )}
 
       {acao === 'editar_livre' && (

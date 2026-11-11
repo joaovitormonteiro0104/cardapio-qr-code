@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   MOTIVOS_CANCELAMENTO,
   confirmacaoPorNumeroValida,
+  motivoCancelamentoParaCliente,
   motivoParaRegistro,
   podeCancelar,
   precisaDuasEtapas,
@@ -75,5 +76,34 @@ describe('motivoParaRegistro', () => {
   it('junta motivo e texto', () => {
     expect(motivoParaRegistro('outro', ' queimou ')).toBe('outro: queimou')
     expect(motivoParaRegistro('atraso')).toBe('atraso')
+  })
+})
+
+describe('motivoCancelamentoParaCliente', () => {
+  it('sem motivo não mostra nada', () => {
+    expect(motivoCancelamentoParaCliente(null)).toBeNull()
+  })
+
+  it('cancelado pelo próprio cliente', () => {
+    expect(motivoCancelamentoParaCliente('cliente_janela_livre')).toBe('Você cancelou este pedido.')
+  })
+
+  it('auto-cancelamento explica e convida a pedir de novo', () => {
+    expect(motivoCancelamentoParaCliente('auto_cancelamento')).toContain('não confirmou a tempo')
+  })
+
+  it('motivo da cozinha mostra a categoria em português', () => {
+    expect(motivoCancelamentoParaCliente('sem_ingrediente')).toBe('Cancelado pela cozinha: sem ingrediente.')
+    expect(motivoCancelamentoParaCliente('atraso: forno quebrou')).toBe('Cancelado pela cozinha: atraso.')
+  })
+
+  it('texto livre da cozinha não vaza para o cliente', () => {
+    const texto = motivoCancelamentoParaCliente('outro: cliente grosseiro')
+    expect(texto).not.toContain('grosseiro')
+    expect(texto).toContain('garçom')
+  })
+
+  it('valor desconhecido cai numa mensagem genérica', () => {
+    expect(motivoCancelamentoParaCliente('algo_novo')).toBe('Cancelado pela cozinha.')
   })
 })

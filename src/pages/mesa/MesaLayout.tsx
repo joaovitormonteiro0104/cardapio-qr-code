@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { NavLink, Outlet, useOutletContext, useParams } from 'react-router-dom'
 import { Carregando } from '@/components/Carregando'
 import { useCarrinho, type Carrinho } from '@/hooks/useCarrinho'
@@ -16,6 +16,8 @@ export interface ContextoMesa extends EstadoComandaCliente {
   setAviso: (aviso: string | null) => void
 }
 
+const DURACAO_AVISO_MS = 8000
+
 /** Usado pelas páginas filhas de /mesa/:numero. */
 export function useMesa(): ContextoMesa {
   return useOutletContext<ContextoMesa>()
@@ -28,6 +30,14 @@ export default function MesaLayout() {
   const carrinho = useCarrinho(numeroMesa)
   const { configs } = useConfig()
   const [aviso, setAviso] = useState<string | null>(null)
+
+  // Aviso de confirmação ("Pedido #N enviado") some sozinho: depois de alguns
+  // segundos ele já não descreve o estado do pedido, que pode ter mudado.
+  useEffect(() => {
+    if (!aviso) return
+    const timer = setTimeout(() => setAviso(null), DURACAO_AVISO_MS)
+    return () => clearTimeout(timer)
+  }, [aviso])
 
   if (estado.fase === 'carregando') return <Carregando texto="Abrindo o cardápio…" />
   if (estado.fase === 'mesa_indisponivel') return <MesaIndisponivel />
