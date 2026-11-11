@@ -83,7 +83,7 @@
   @apply botao bg-perigo text-white hover:brightness-95;
 }
 @utility campo {
-  @apply min-h-11 w-full rounded-xl border border-borda bg-superficie px-3 text-base text-tinta placeholder:text-tinta-suave/70 focus:border-brasa focus:outline-none focus:ring-2 focus:ring-brasa/30;
+  @apply min-h-11 w-full rounded-xl border border-borda bg-superficie px-3 text-base text-tinta placeholder:text-tinta-suave/70 focus:border-brasa focus:outline-none focus:ring-2 focus:ring-brasa/30 aria-invalid:border-perigo aria-invalid:ring-2 aria-invalid:ring-perigo/20;
 }
 @utility rotulo {
   @apply mb-1 block text-sm font-medium text-tinta;

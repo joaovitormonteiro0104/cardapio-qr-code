@@ -37,8 +37,9 @@ export function LayoutEquipe({ titulo, children }: { titulo: string; children: R
   return (
     <div className="min-h-dvh">
       <header className="sticky top-0 z-10 border-b border-borda bg-superficie/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2">
-          <nav aria-label="Áreas" className="-mx-1 flex flex-1 gap-1 overflow-x-auto">
+        <div className="mx-auto flex max-w-7xl items-start gap-3 px-4 py-2 sm:items-center">
+          {/* flex-wrap: no celular as abas quebram em linhas em vez de esconder à direita */}
+          <nav aria-label="Áreas" className="-mx-1 flex flex-1 flex-wrap gap-1">
             {links.map(link => (
               <NavLink
                 key={link.para}

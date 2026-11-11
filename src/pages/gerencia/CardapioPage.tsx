@@ -1,4 +1,5 @@
 import { useEffect, useId, useState, type FormEvent } from 'react'
+import { FotoItem } from '@/components/FotoItem'
 import { LayoutEquipe } from '@/components/LayoutEquipe'
 import { Modal } from '@/components/Modal'
 import { mover } from '@/domain/cardapio/validacao'
@@ -268,9 +269,7 @@ interface PropsLinha {
 function LinhaItem({ item, ocupado, aoEditar, aoAlternarEsgotado, aoExcluir, aoRestaurar }: PropsLinha) {
   return (
     <li className={`flex flex-wrap items-center gap-3 px-3 py-3 ${item.ativo ? '' : 'opacity-60'}`}>
-      <div className="size-14 shrink-0 overflow-hidden rounded-lg bg-fundo">
-        {item.fotoUrl && <img src={item.fotoUrl} alt="" loading="lazy" className="size-full object-cover" />}
-      </div>
+      <FotoItem url={item.fotoUrl} nome={item.nome} className="size-14 rounded-lg" />
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">{item.nome}</p>
         <p className="text-sm tabular-nums text-tinta-suave">

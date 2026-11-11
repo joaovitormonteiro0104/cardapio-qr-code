@@ -105,8 +105,9 @@ export default function ContasPage() {
           {aviso.texto}
         </p>
       )}
-      {carregando && <p className="text-tinta-suave">Carregando contas…</p>}
-
+      {carregando ? (
+        <p className="text-tinta-suave">Carregando contas…</p>
+      ) : (
       <div className="grid gap-6 lg:grid-cols-3">
         {GRUPOS.map(grupo => {
           const doGrupo = comandas.filter(c => c.comanda.estado === grupo.estado)
@@ -127,6 +128,7 @@ export default function ContasPage() {
                     const naoFecha = motivoNaoPodeFechar(comanda.estado, item.pedidos)
                     const pendentes = temPedidoPendente(item.pedidos)
                     const parado = formatarDuracao(agora.getTime() - comanda.ultimaAtividadeEm.getTime())
+                    const ativos = item.pedidos.filter(p => p.estado !== 'Cancelado').length
                     return (
                       <li
                         key={comanda.id}
@@ -137,7 +139,7 @@ export default function ContasPage() {
                           <p className="text-xl font-bold tabular-nums">{formatarReal(total)}</p>
                         </div>
                         <p className="mt-1 text-sm tabular-nums text-tinta-suave">
-                          conta #{comanda.numero} · {item.pedidos.length} pedido(s) · última atividade {parado === 'agora' ? 'agora' : `há ${parado}`}
+                          conta #{comanda.numero} · {ativos === 1 ? '1 pedido' : `${ativos} pedidos`} ·última atividade {parado === 'agora' ? 'agora' : `há ${parado}`}
                         </p>
                         {inativa && (
                           <p className="mt-2 rounded-lg bg-alerta-clara px-3 py-1.5 text-sm">
@@ -188,6 +190,7 @@ export default function ContasPage() {
           )
         })}
       </div>
+      )}
 
       <Modal
         aberto={confirmacao !== null}

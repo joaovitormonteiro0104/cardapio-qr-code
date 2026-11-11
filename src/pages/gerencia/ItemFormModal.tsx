@@ -1,7 +1,7 @@
 import { useEffect, useId, useState, type FormEvent } from 'react'
 import { Modal } from '@/components/Modal'
 import { centavosParaCampo, parseReal } from '@/domain/cardapio/formatacao'
-import { FOTO_TIPOS_ACEITOS, precoValido, problemaFoto } from '@/domain/cardapio/validacao'
+import { FOTO_TIPOS_ACEITOS, nomeItemValido, precoValido, problemaFoto } from '@/domain/cardapio/validacao'
 import { ItemFormSchema, type Categoria, type ItemCardapio, type ItemForm } from '@/schemas/cardapio'
 import { ErroFoto, uploadFotoItem } from '@/repositories/storageRepo'
 
@@ -21,6 +21,9 @@ const MENSAGEM_FOTO = {
   envio: 'Não foi possível enviar a foto. Tente de novo.',
 } as const
 
+/** Erro de cada campo, mostrado embaixo dele. `geral` = falha ao salvar. */
+type Erros = Partial<Record<'nome' | 'preco' | 'categoria' | 'foto' | 'geral', string>>
+
 export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFechar, aoSalvar }: Props) {
   const ids = useId()
   const [nome, setNome] = useState('')
@@ -30,7 +33,7 @@ export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFe
   const [fotoUrl, setFotoUrl] = useState<string | null>(null)
   const [arquivo, setArquivo] = useState<File | null>(null)
   const [previa, setPrevia] = useState<string | null>(null)
-  const [erro, setErro] = useState<string | null>(null)
+  const [erros, setErros] = useState<Erros>({})
   const [salvando, setSalvando] = useState(false)
 
   useEffect(() => {
@@ -41,7 +44,7 @@ export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFe
     setDisponivel(item?.disponivel ?? true)
     setFotoUrl(item?.fotoUrl ?? null)
     setArquivo(null)
-    setErro(null)
+    setErros({})
   }, [aberto, item, categoriaInicial, categorias])
 
   // prévia local da foto escolhida (antes do upload)
@@ -60,20 +63,25 @@ export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFe
     if (!escolhido) return
     const problema = problemaFoto(escolhido.type, escolhido.size)
     if (problema) {
-      setErro(MENSAGEM_FOTO[problema])
+      setErros(e => ({ ...e, foto: MENSAGEM_FOTO[problema] }))
       return
     }
-    setErro(null)
+    setErros(e => ({ ...e, foto: undefined }))
     setArquivo(escolhido)
   }
 
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
-    setErro(null)
 
+    // Confere todos os campos de uma vez, para mostrar todos os erros juntos.
     const centavos = parseReal(preco)
-    if (!precoValido(centavos)) {
-      setErro('Preço inválido. Use, por exemplo, 12,50.')
+    const novos: Erros = {}
+    if (!nomeItemValido(nome)) novos.nome = 'Informe o nome do item.'
+    if (!precoValido(centavos)) novos.preco = 'Preço inválido. Use, por exemplo, 12,50.'
+    if (!categoriaId) novos.categoria = 'Escolha uma categoria.'
+    setErros(novos)
+    if (Object.keys(novos).length > 0 || !precoValido(centavos)) {
+      document.getElementById(`${ids}-${novos.nome ? 'nome' : novos.preco ? 'preco' : 'categoria'}`)?.focus()
       return
     }
 
@@ -88,13 +96,13 @@ export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFe
         fotoUrl: urlFinal,
       })
       if (!validacao.success) {
-        setErro(validacao.error.issues[0]?.message ?? 'Confira os campos.')
+        setErros({ geral: validacao.error.issues[0]?.message ?? 'Confira os campos.' })
         return
       }
       await aoSalvar(validacao.data)
     } catch (falha) {
       console.error(falha)
-      setErro(falha instanceof ErroFoto ? MENSAGEM_FOTO[falha.motivo] : 'Não foi possível salvar. Tente de novo.')
+      setErros(falha instanceof ErroFoto ? { foto: MENSAGEM_FOTO[falha.motivo] } : { geral: 'Não foi possível salvar. Tente de novo.' })
     } finally {
       setSalvando(false)
     }
@@ -131,7 +139,10 @@ export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFe
             maxLength={100}
             onChange={e => setNome(e.target.value)}
             required
+            aria-invalid={erros.nome ? true : undefined}
+            aria-describedby={erros.nome ? `${ids}-nome-erro` : undefined}
           />
+          <ErroCampo id={`${ids}-nome-erro`} texto={erros.nome} />
           <p className="mt-1 text-xs text-tinta-suave">Tamanhos diferentes são itens separados (ex.: “X-Burguer grande”).</p>
         </div>
 
@@ -148,7 +159,10 @@ export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFe
               value={preco}
               onChange={e => setPreco(e.target.value)}
               required
+              aria-invalid={erros.preco ? true : undefined}
+              aria-describedby={erros.preco ? `${ids}-preco-erro` : undefined}
             />
+            <ErroCampo id={`${ids}-preco-erro`} texto={erros.preco} />
           </div>
           <div>
             <label htmlFor={`${ids}-categoria`} className="rotulo">
@@ -160,6 +174,8 @@ export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFe
               value={categoriaId}
               onChange={e => setCategoriaId(e.target.value)}
               required
+              aria-invalid={erros.categoria ? true : undefined}
+              aria-describedby={erros.categoria ? `${ids}-categoria-erro` : undefined}
             >
               {categorias.map(categoria => (
                 <option key={categoria.id} value={categoria.id}>
@@ -168,6 +184,7 @@ export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFe
                 </option>
               ))}
             </select>
+            <ErroCampo id={`${ids}-categoria-erro`} texto={erros.categoria} />
           </div>
         </div>
 
@@ -211,13 +228,25 @@ export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFe
               )}
             </div>
           </div>
+          <ErroCampo id={`${ids}-foto-erro`} texto={erros.foto} />
           <p className="mt-1 text-xs text-tinta-suave">JPG, PNG ou WebP, até 2 MB.</p>
         </div>
 
-        <p role="alert" className="min-h-5 text-sm font-medium text-perigo">
-          {erro}
-        </p>
+        {erros.geral && (
+          <p role="alert" className="text-sm font-medium text-perigo">
+            {erros.geral}
+          </p>
+        )}
       </form>
     </Modal>
+  )
+}
+
+function ErroCampo({ id, texto }: { id: string; texto: string | undefined }) {
+  if (!texto) return null
+  return (
+    <p id={id} role="alert" className="mt-1 text-sm font-medium text-perigo">
+      {texto}
+    </p>
   )
 }

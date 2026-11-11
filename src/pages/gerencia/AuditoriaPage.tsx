@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { LayoutEquipe } from '@/components/LayoutEquipe'
 import { eventosParaCsv, intervaloDeDias } from '@/domain/auditoria/csv'
 import { TIPOS_EVENTO } from '@/domain/auditoria/evento'
+import { rotuloEstado, rotuloMotivo, rotuloTipoEvento } from '@/domain/auditoria/rotulos'
 import { FUSO_HORARIO, formatarDataHora } from '@/lib/formato'
 import * as auditoriaRepo from '@/repositories/auditoriaRepo'
 import type { EventoAuditoria } from '@/repositories/auditoriaRepo'
@@ -22,7 +23,7 @@ function resumo(evento: EventoAuditoria): string {
   const partes: string[] = []
   const r = p as Record<string, unknown>
   if (typeof r.numero === 'number') partes.push(`#${r.numero}`)
-  if (typeof r.de === 'string' && typeof r.para === 'string') partes.push(`${r.de} → ${r.para}`)
+  if (typeof r.de === 'string' && typeof r.para === 'string') partes.push(`${rotuloEstado(r.de)} → ${rotuloEstado(r.para)}`)
   if (typeof r.nome === 'string') partes.push(r.nome)
   if (typeof r.item === 'string') partes.push(r.item)
   if (typeof r.chave === 'string') partes.push(`${r.chave}: ${String(r.antes ?? '')} → ${String(r.depois ?? '')}`)
@@ -122,7 +123,7 @@ export default function AuditoriaPage() {
             <option value="">Todos</option>
             {TIPOS_EVENTO.map(t => (
               <option key={t} value={t}>
-                {t.replace(/_/g, ' ')}
+                {rotuloTipoEvento(t)}
               </option>
             ))}
           </select>
@@ -142,7 +143,7 @@ export default function AuditoriaPage() {
       {erro && <p role="alert" className="mb-4 rounded-xl bg-perigo-clara px-4 py-3 text-sm text-perigo">{erro}</p>}
 
       <p className="mb-2 text-sm text-tinta-suave" aria-live="polite">
-        {carregando ? 'Carregando…' : `${total} evento(s) no período`}
+        {carregando ? 'Carregando…' : total === 1 ? '1 evento no período' : `${total} eventos no período`}
       </p>
 
       <div className="overflow-x-auto rounded-2xl ring-1 ring-borda">
@@ -160,13 +161,13 @@ export default function AuditoriaPage() {
             {eventos.map(evento => (
               <tr key={evento.id} className="align-top">
                 <td className="whitespace-nowrap px-3 py-2 tabular-nums">{formatarDataHora(evento.criadoEm)}</td>
-                <td className="px-3 py-2 font-medium">{evento.tipoEvento.replace(/_/g, ' ')}</td>
+                <td className="px-3 py-2 font-medium">{rotuloTipoEvento(evento.tipoEvento)}</td>
                 <td className="px-3 py-2">
                   {ROTULOS_ATOR[evento.atorTipo]}
                   {evento.atorTipo === 'funcionario' && evento.atorId && <span className="text-tinta-suave"> {evento.atorId}</span>}
                 </td>
                 <td className="px-3 py-2 text-tinta-suave">{resumo(evento)}</td>
-                <td className="px-3 py-2">{evento.motivo}</td>
+                <td className="px-3 py-2">{rotuloMotivo(evento.motivo)}</td>
               </tr>
             ))}
             {!carregando && eventos.length === 0 && (

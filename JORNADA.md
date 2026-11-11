@@ -221,6 +221,8 @@ Encontrados nos testes de usabilidade de 2026-11-10. Nenhum impede o fluxo, exce
 | 9 | Equipe no celular | Menu de abas rola para o lado; Auditoria e Configurações ficam escondidas | Baixo (feito para tablet) |
 | 10 | Cardápio (gerência) | Item sem foto aparece como quadrado cinza; no cliente aparece a inicial | Baixo |
 
+**Situação em 2026-11-11:** os atritos 2 a 10 foram corrigidos. Continua valendo o 1: imprima os QR só pelo endereço publicado (`https://cardapio-qr-code-p68a.vercel.app/gerencia/mesas`).
+
 ---
 
 ## 7. Estados por trás da jornada

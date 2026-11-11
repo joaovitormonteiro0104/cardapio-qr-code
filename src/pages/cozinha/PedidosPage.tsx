@@ -66,7 +66,11 @@ export default function PedidosPage() {
           <span className={`size-2.5 rounded-full ${conectado ? 'bg-sucesso' : 'bg-perigo'}`} aria-hidden />
           {conectado ? 'Ao vivo' : 'Sem conexão: reconectando…'}
         </span>
-        <span className="text-tinta-suave">{pedidos.length} pedido(s) em aberto</span>
+        {!carregando && (
+          <span className="text-tinta-suave">
+            {pedidos.length === 1 ? '1 pedido em aberto' : `${pedidos.length} pedidos em aberto`}
+          </span>
+        )}
       </div>
 
       {aviso && (
@@ -80,8 +84,9 @@ export default function PedidosPage() {
         </p>
       )}
       {erro && <p className="mb-4 rounded-xl bg-perigo-clara px-4 py-3 text-sm text-perigo">{erro}</p>}
-      {carregando && <p className="text-tinta-suave">Carregando pedidos…</p>}
-
+      {carregando ? (
+        <p className="text-tinta-suave">Carregando pedidos…</p>
+      ) : (
       <div className="grid gap-5 lg:grid-cols-3">
         {COLUNAS.map(coluna => {
           const daColuna = ordenar(pedidos.filter(p => colunaDe(p) === coluna.estado))
@@ -122,6 +127,7 @@ export default function PedidosPage() {
           )
         })}
       </div>
+      )}
 
       <CancelamentoModal
         estado={cancelamento}
