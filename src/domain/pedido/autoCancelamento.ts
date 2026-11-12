@@ -1,11 +1,14 @@
 // Auto-cancelamento de pedidos não aceitos (AGENTS.md §6.5 e §6.11). Puro.
 import { MS_POR_MINUTO, type ConfigsTempo } from '../config'
+import type { EstadoComanda } from '../comanda/estado'
 import type { EstadoPedido } from './estado'
 
 export interface PedidoExpiravel {
   id: string
   estado: EstadoPedido
   estadoDesde: Date
+  /** Conta que já avisou o pagamento não tem pedidos cancelados sozinhos (decisão 20). */
+  estadoComanda: EstadoComanda
 }
 
 /**
@@ -17,7 +20,7 @@ export function pedidoExpirado(
   configs: Pick<ConfigsTempo, 'timeoutAutoCancelamentoMin'>,
   agora: Date,
 ): boolean {
-  if (pedido.estado !== 'Recebido') return false
+  if (pedido.estado !== 'Recebido' || pedido.estadoComanda !== 'Aberta') return false
   return agora.getTime() - pedido.estadoDesde.getTime() >= configs.timeoutAutoCancelamentoMin * MS_POR_MINUTO
 }
 

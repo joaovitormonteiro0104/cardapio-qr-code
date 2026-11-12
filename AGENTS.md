@@ -299,6 +299,7 @@ Aberta → AguardandoPagamento → Paga → Fechada
 - Dentro da janela: cliente edita quantidades, remove itens ou cancela o pedido direto, sem aprovação. Cancelar o pedido em `Preparando` dentro da janela vai direto pra `Cancelado` (é exceção da janela, registrada no log como ação do cliente).
 - Fora da janela: botão "editar" some, aparece "chamar garçom", que leva o pedido pra `EdicaoSolicitada`. O garçom resolve no tablet (aplica a edição ou nega) e o pedido volta ao estado anterior.
 - Cancelamento parcial (remover 1 item) segue as MESMAS regras do cancelamento total.
+- **Depois do "já paguei"** (comanda fora de `Aberta`, decisão 20): o cliente não edita, não cancela e não chama garçom pelo celular; só um atendente muda algo.
 - **Auto-cancelamento**: pedido em `Recebido` há mais de `timeout_auto_cancelamento_min` minutos (padrão 15, CONFIGURÁVEL) é cancelado com `ator_tipo = sistema`. Como isso roda está em §6.11.
 
 ### 6.6 Cancelamento pela cozinha (2 etapas)
@@ -327,6 +328,7 @@ Aberta → AguardandoPagamento → Paga → Fechada
 - **Método no MVP**: APENAS Pix estático. O sistema gera um QR Code Pix (padrão BR Code) com a `chave_pix` do estabelecimento e o **valor total da comanda**, mais o código "copia e cola".
 - **Confirmação**: 100% manual pelo caixa. Caixa confere o extrato no celular e toca "marcar como pago".
 - **Sem integração com gateway no MVP**. Mercado Pago, Asaas, Efí ficam pra fase 2.
+- **Pedidos ainda na cozinha** (decisão 20): o cliente PODE avisar que pagou, mas a tela de pagamento avisa que o valor inclui esses pedidos e que depois não dá para mudar pelo celular. O auto-cancelamento não age em conta que já avisou o pagamento.
 - **Sem divisão de conta no MVP**. Clientes dividem entre si por fora.
 
 ### 6.9 Autenticação e papéis
@@ -1102,6 +1104,7 @@ Decisões **confirmadas pelo dono do produto em 2026-11-09**:
 | 12 | (2026-11-10) `config.toml` alinhado aos valores do projeto remoto (confirmação de email ligada, MFA TOTP ligado, pool etc.); só o login anônimo mudou no remoto. Comandos do CLI 3 contra o projeto usam `--remote` (o padrão é o banco local, que exige Docker) | 3 |
 
 | 19 | (2026-11-12) Endurecimento da RLS (§7): privilégio de UPDATE por coluna, estados permitidos ao cliente, preço do item igual ao do cardápio no INSERT e auditoria sem falsificação de ator. Exceção consciente ao "nada de regra de negócio na RLS", aprovada pelo dono do produto | 3, 6, 9, 11, 12 |
+| 20 | (2026-11-12) Pagamento com pedidos pendentes: só avisar o cliente (não bloqueia); depois do "já paguei" o cliente não edita/cancela/chama garçom; o auto-cancelamento ignora contas fora de `Aberta` | 9, 12 |
 
 Ainda em aberto: nenhuma no momento. A escolha entre Backblaze B2 e S3 pro backup é feita no item 16.
 
@@ -1111,7 +1114,7 @@ Ainda em aberto: nenhuma no momento. A escolha entre Backblaze B2 e S3 pro backu
 
 **Revisão 5 (2026-11-12)** — revisão de segurança:
 - §7: endurecimento da RLS e teste `rls_abusos.sql`.
-- §15: decisão 19.
+- §15: decisões 19 e 20; §6.5 e §6.8 atualizadas (regras de pagamento).
 
 **Revisão 4 (2026-11-10)** — itens 2 e 3 executados:
 - §7: função `comanda_aberta_da_mesa`, operação lê todas as mesas, trava extra de privilégios, roteiro de teste.

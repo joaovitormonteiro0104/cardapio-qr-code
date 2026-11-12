@@ -4,6 +4,7 @@ import { EditarItensModal } from '@/components/EditarItensModal'
 import { EstadoPedidoBadge } from '@/components/EstadoPedidoBadge'
 import { FotoItem } from '@/components/FotoItem'
 import { Modal } from '@/components/Modal'
+import type { EstadoComanda } from '@/domain/comanda/estado'
 import type { ConfigsTempo } from '@/domain/config'
 import { totalComanda, totalPedido } from '@/domain/pedido/calculo'
 import { motivoCancelamentoParaCliente } from '@/domain/pedido/cancelamento'
@@ -57,6 +58,11 @@ export default function ComandaPage() {
 
   return (
     <div className="space-y-6">
+      {comanda.estado !== 'Aberta' && visiveis.length > 0 && (
+        <p role="note" className="rounded-xl bg-info-clara px-4 py-3 text-sm text-info">
+          A conta foi enviada para pagamento. Para mudar algum pedido, chame um atendente.
+        </p>
+      )}
       {visiveis.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-borda px-6 py-10 text-center">
           <p className="font-medium">Nenhum pedido ainda.</p>
@@ -72,6 +78,7 @@ export default function ComandaPage() {
               pedido={pedido}
               configs={configs}
               agora={agora}
+              estadoComanda={comanda.estado}
               aoEditar={() => setEditando(pedido.id)}
               aoCancelar={() => setConfirmacao({ tipo: 'cancelar', pedido })}
               aoChamar={() => setConfirmacao({ tipo: 'chamar', pedido })}
@@ -149,14 +156,15 @@ interface PropsCartao {
   pedido: Pedido
   configs: ConfigsTempo | null
   agora: Date
+  estadoComanda: EstadoComanda
   aoEditar: () => void
   aoCancelar: () => void
   aoChamar: () => void
 }
 
-function CartaoPedido({ pedido, configs, agora, aoEditar, aoCancelar, aoChamar }: PropsCartao) {
+function CartaoPedido({ pedido, configs, agora, estadoComanda, aoEditar, aoCancelar, aoChamar }: PropsCartao) {
   const cancelado = pedido.estado === 'Cancelado'
-  const acao = configs ? acaoDisponivel(pedido, configs, agora) : 'bloqueado'
+  const acao = configs ? acaoDisponivel(pedido, configs, agora, estadoComanda) : 'bloqueado'
   const fim = configs ? fimDaJanelaLivre(pedido, configs) : null
   const segundos = fim && acao === 'editar_livre' ? Math.max(0, Math.ceil((fim.getTime() - agora.getTime()) / 1000)) : null
 

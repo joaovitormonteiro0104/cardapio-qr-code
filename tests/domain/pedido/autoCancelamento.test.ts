@@ -8,7 +8,7 @@ const depois = (ms: number) => new Date(INICIO.getTime() + ms)
 const configs = { timeoutAutoCancelamentoMin: 15 }
 
 describe('pedidoExpirado', () => {
-  const recebido = { estado: 'Recebido' as const, estadoDesde: INICIO }
+  const recebido = { estado: 'Recebido' as const, estadoDesde: INICIO, estadoComanda: 'Aberta' as const }
 
   it('não expira antes do limite', () => {
     expect(pedidoExpirado(recebido, configs, depois(15 * MIN - 1))).toBe(false)
@@ -21,17 +21,23 @@ describe('pedidoExpirado', () => {
   it.each<EstadoPedido>(['Preparando', 'Pronto', 'EdicaoSolicitada', 'Cancelado'])(
     '%s nunca expira',
     estado => {
-      expect(pedidoExpirado({ estado, estadoDesde: INICIO }, configs, depois(999 * MIN))).toBe(false)
+      expect(pedidoExpirado({ estado, estadoDesde: INICIO, estadoComanda: 'Aberta' as const }, configs, depois(999 * MIN))).toBe(false)
     },
   )
+})
+
+describe('conta que já avisou o pagamento (decisão 20)', () => {
+  it.each(['AguardandoPagamento', 'Paga'] as const)('em %s o pedido não é cancelado sozinho', estadoComanda => {
+    expect(pedidoExpirado({ estado: 'Recebido', estadoDesde: INICIO, estadoComanda }, configs, depois(999 * MIN))).toBe(false)
+  })
 })
 
 describe('pedidosExpirados', () => {
   it('filtra só os vencidos e preserva os objetos', () => {
     const pedidos = [
-      { id: 'velho', estado: 'Recebido' as const, estadoDesde: INICIO },
-      { id: 'novo', estado: 'Recebido' as const, estadoDesde: depois(10 * MIN) },
-      { id: 'aceito', estado: 'Preparando' as const, estadoDesde: INICIO },
+      { id: 'velho', estado: 'Recebido' as const, estadoDesde: INICIO, estadoComanda: 'Aberta' as const },
+      { id: 'novo', estado: 'Recebido' as const, estadoDesde: depois(10 * MIN), estadoComanda: 'Aberta' as const },
+      { id: 'aceito', estado: 'Preparando' as const, estadoDesde: INICIO, estadoComanda: 'Aberta' as const },
     ]
     expect(pedidosExpirados(pedidos, configs, depois(20 * MIN)).map(p => p.id)).toEqual(['velho'])
   })

@@ -40,21 +40,33 @@ describe('dentroDaJanelaLivre', () => {
 
 describe('acaoDisponivel', () => {
   it('editar_livre dentro da janela', () => {
-    expect(acaoDisponivel(p('Recebido'), configs, INICIO)).toBe('editar_livre')
-    expect(acaoDisponivel(p('Preparando'), configs, depois(MIN))).toBe('editar_livre')
+    expect(acaoDisponivel(p('Recebido'), configs, INICIO, 'Aberta')).toBe('editar_livre')
+    expect(acaoDisponivel(p('Preparando'), configs, depois(MIN), 'Aberta')).toBe('editar_livre')
   })
 
   it('solicitar_edicao em Preparando fora da janela e em Pronto', () => {
-    expect(acaoDisponivel(p('Preparando'), configs, depois(2 * MIN))).toBe('solicitar_edicao')
-    expect(acaoDisponivel(p('Pronto'), configs, INICIO)).toBe('solicitar_edicao')
+    expect(acaoDisponivel(p('Preparando'), configs, depois(2 * MIN), 'Aberta')).toBe('solicitar_edicao')
+    expect(acaoDisponivel(p('Pronto'), configs, INICIO, 'Aberta')).toBe('solicitar_edicao')
   })
 
   it.each<EstadoPedido>(['Entregue', 'Finalizado', 'Cancelado', 'EdicaoSolicitada', 'CancelamentoPendente'])(
     'bloqueado em %s',
     estado => {
-      expect(acaoDisponivel(p(estado), configs, INICIO)).toBe('bloqueado')
+      expect(acaoDisponivel(p(estado), configs, INICIO, 'Aberta')).toBe('bloqueado')
     },
   )
+})
+
+describe('conta que já avisou o pagamento (decisão 20)', () => {
+  it.each(['AguardandoPagamento', 'Paga', 'Fechada'] as const)('em %s o cliente não mexe em nada', estadoComanda => {
+    expect(acaoDisponivel(p('Recebido'), configs, INICIO, estadoComanda)).toBe('bloqueado')
+    expect(acaoDisponivel(p('Pronto'), configs, INICIO, estadoComanda)).toBe('bloqueado')
+    expect(podeEditarItens(p('Recebido'), 'cliente', configs, INICIO, estadoComanda)).toBe(false)
+  })
+
+  it('o garçom continua resolvendo edição solicitada', () => {
+    expect(podeEditarItens(p('EdicaoSolicitada'), 'funcionario', configs, INICIO, 'AguardandoPagamento')).toBe(true)
+  })
 })
 
 describe('fimDaJanelaLivre', () => {
@@ -69,15 +81,15 @@ describe('fimDaJanelaLivre', () => {
 
 describe('podeEditarItens', () => {
   it('cliente: só na janela livre', () => {
-    expect(podeEditarItens(p('Recebido'), 'cliente', configs, INICIO)).toBe(true)
-    expect(podeEditarItens(p('Preparando'), 'cliente', configs, depois(2 * MIN))).toBe(false)
-    expect(podeEditarItens(p('EdicaoSolicitada'), 'cliente', configs, INICIO)).toBe(false)
+    expect(podeEditarItens(p('Recebido'), 'cliente', configs, INICIO, 'Aberta')).toBe(true)
+    expect(podeEditarItens(p('Preparando'), 'cliente', configs, depois(2 * MIN), 'Aberta')).toBe(false)
+    expect(podeEditarItens(p('EdicaoSolicitada'), 'cliente', configs, INICIO, 'Aberta')).toBe(false)
   })
 
   it('funcionário: só em EdicaoSolicitada', () => {
-    expect(podeEditarItens(p('EdicaoSolicitada'), 'funcionario', configs, INICIO)).toBe(true)
-    expect(podeEditarItens(p('Recebido'), 'funcionario', configs, INICIO)).toBe(false)
-    expect(podeEditarItens(p('Preparando'), 'funcionario', configs, INICIO)).toBe(false)
+    expect(podeEditarItens(p('EdicaoSolicitada'), 'funcionario', configs, INICIO, 'Aberta')).toBe(true)
+    expect(podeEditarItens(p('Recebido'), 'funcionario', configs, INICIO, 'Aberta')).toBe(false)
+    expect(podeEditarItens(p('Preparando'), 'funcionario', configs, INICIO, 'Aberta')).toBe(false)
   })
 })
 

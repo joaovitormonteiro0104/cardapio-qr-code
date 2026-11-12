@@ -1,5 +1,6 @@
 // Janela livre de edição/cancelamento pelo cliente (AGENTS.md §6.5). Puro.
 import { MS_POR_MINUTO, type ConfigsTempo } from '../config'
+import type { EstadoComanda } from '../comanda/estado'
 import type { EstadoPedido } from './estado'
 
 export interface PedidoNoTempo {
@@ -43,7 +44,10 @@ export function acaoDisponivel(
   pedido: PedidoNoTempo,
   configs: Pick<ConfigsTempo, 'janelaEdicaoPreparandoMin'>,
   agora: Date,
+  estadoComanda: EstadoComanda,
 ): AcaoCliente {
+  // Depois do "já paguei" (decisão 20) o cliente não mexe mais nos pedidos.
+  if (estadoComanda !== 'Aberta') return 'bloqueado'
   if (dentroDaJanelaLivre(pedido, configs, agora)) return 'editar_livre'
   if (pedido.estado === 'Preparando' || pedido.estado === 'Pronto') return 'solicitar_edicao'
   return 'bloqueado'
@@ -59,9 +63,10 @@ export function podeEditarItens(
   quem: 'cliente' | 'funcionario',
   configs: Pick<ConfigsTempo, 'janelaEdicaoPreparandoMin'>,
   agora: Date,
+  estadoComanda: EstadoComanda,
 ): boolean {
   if (quem === 'funcionario') return pedido.estado === 'EdicaoSolicitada'
-  return dentroDaJanelaLivre(pedido, configs, agora)
+  return estadoComanda === 'Aberta' && dentroDaJanelaLivre(pedido, configs, agora)
 }
 
 /**

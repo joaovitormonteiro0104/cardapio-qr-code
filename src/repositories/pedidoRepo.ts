@@ -23,6 +23,7 @@ import {
   type ResultadoTransicao,
 } from '@/domain/pedido/estado'
 import { EstadoComandaSchema } from '@/schemas/comanda'
+import type { EstadoComanda } from '@/domain/comanda/estado'
 import {
   NovoPedidoSchema,
   PedidoSchema,
@@ -220,12 +221,17 @@ interface SituacaoLida {
   estadoDesdeTexto: string
   cancelamentoMotivo: string | null
   itens: Pedido['itens']
+  estadoComanda: EstadoComanda
 }
 
 async function lerPedido(pedidoId: string): Promise<SituacaoLida> {
-  const { data, error } = await supabase.from('pedidos').select(COLUNAS_PEDIDO).eq('id', pedidoId).single()
+  const { data, error } = await supabase
+    .from('pedidos')
+    .select(`${COLUNAS_PEDIDO}, comandas (estado)`)
+    .eq('id', pedidoId)
+    .single()
   if (error) throw new Error(`lerPedido: ${error.message}`)
-  const linha = data as unknown as LinhaPedido
+  const linha = data as unknown as LinhaPedido & { comandas: { estado: string } | null }
   const pedido = paraPedido(linha)
   return {
     id: pedido.id,
@@ -237,6 +243,7 @@ async function lerPedido(pedidoId: string): Promise<SituacaoLida> {
     estadoDesdeTexto: linha.estado_desde,
     cancelamentoMotivo: pedido.cancelamentoMotivo,
     itens: pedido.itens,
+    estadoComanda: EstadoComandaSchema.parse(linha.comandas?.estado),
   }
 }
 
@@ -301,9 +308,13 @@ export async function avancarEstado(pedidoId: string, para: EstadoPedido): Promi
   })
 }
 
+/** Depois do "já paguei" o cliente não mexe mais nos pedidos (decisão 20). */
+const MENSAGEM_CONTA_PAGA = 'A conta já foi enviada para pagamento. Para mudar algo, chame um atendente.'
+
 /** Cliente fora da janela: "chamar garçom" → EdicaoSolicitada. */
 export async function solicitarEdicao(pedidoId: string): Promise<void> {
   const atual = await lerPedido(pedidoId)
+  if (atual.estadoComanda !== 'Aberta') throw new ErroRegra(MENSAGEM_CONTA_PAGA)
   if (!transicaoValida(atual, 'EdicaoSolicitada')) throw new ErroRegra('Este pedido não aceita mais pedidos de edição.')
   await gravarOuFalhar({
     atual,
@@ -331,6 +342,7 @@ export async function resolverEdicao(pedidoId: string, aplicada: boolean): Promi
 export async function cancelarPeloCliente(pedidoId: string, configs: ConfigsTempo): Promise<void> {
   const atual = await lerPedido(pedidoId)
   const agora = new Date()
+  if (atual.estadoComanda !== 'Aberta') throw new ErroRegra(MENSAGEM_CONTA_PAGA)
   if (!dentroDaJanelaLivre(atual, configs, agora)) {
     throw new ErroRegra('O prazo para cancelar sem o garçom acabou. Use "chamar garçom".')
   }
@@ -445,9 +457,11 @@ async function prepararEdicao(pedidoId: string, configs: ConfigsTempo) {
   const atual = await lerPedido(pedidoId)
   const ator = await auditoriaRepo.atorDaSessao()
   const quem: 'cliente' | 'funcionario' = ator.tipo === 'funcionario' ? 'funcionario' : 'cliente'
-  if (!podeEditarItens(atual, quem, configs, new Date())) {
+  if (!podeEditarItens(atual, quem, configs, new Date(), atual.estadoComanda)) {
     throw new ErroRegra(
-      quem === 'cliente'
+      quem === 'cliente' && atual.estadoComanda !== 'Aberta'
+        ? MENSAGEM_CONTA_PAGA
+        : quem === 'cliente'
         ? 'O prazo para editar sem o garçom acabou. Use "chamar garçom".'
         : 'Só dá para editar itens com a edição solicitada.',
     )
@@ -532,17 +546,18 @@ export interface PedidoCozinha extends Pedido {
   comandaNumero: number
   observacao: string | null
   nomeCliente: string | null
+  estadoComanda: EstadoComanda
 }
 
 interface LinhaPedidoCozinha extends LinhaPedido {
-  comandas: { numero: number; observacao: string | null; mesas: { numero: number } | null } | null
+  comandas: { numero: number; estado: string; observacao: string | null; mesas: { numero: number } | null } | null
 }
 
 /** Pedidos que exigem ação da cozinha (Recebido até Pronto, mais os temporários). */
 export async function listarPedidosCozinha(): Promise<PedidoCozinha[]> {
   const { data, error } = await supabase
     .from('pedidos')
-    .select(`${COLUNAS_PEDIDO}, comandas (numero, observacao, mesas (numero))`)
+    .select(`${COLUNAS_PEDIDO}, comandas (numero, estado, observacao, mesas (numero))`)
     .in('estado', [...ESTADOS_PENDENTES])
     .order('estado_desde', { ascending: true })
   if (error) throw new Error(`listarPedidosCozinha: ${error.message}`)
@@ -566,6 +581,7 @@ export async function listarPedidosCozinha(): Promise<PedidoCozinha[]> {
     mesaNumero: linha.comandas?.mesas?.numero ?? 0,
     comandaNumero: linha.comandas?.numero ?? 0,
     observacao: linha.comandas?.observacao ?? null,
+    estadoComanda: EstadoComandaSchema.parse(linha.comandas?.estado),
     nomeCliente: linha.criado_por ? (nomes.get(`${linha.comanda_id}:${linha.criado_por}`) ?? null) : null,
   }))
 }

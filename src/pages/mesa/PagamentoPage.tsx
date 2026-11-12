@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Modal } from '@/components/Modal'
 import { QrCode } from '@/components/QrCode'
-import { podeInformarPagamento } from '@/domain/comanda/estado'
+import { podeInformarPagamento, temPedidoPendente } from '@/domain/comanda/estado'
 import { totalComanda } from '@/domain/pedido/calculo'
 import { PixInvalidoError, gerarPayloadPix } from '@/domain/pagamento/pix'
 import { formatarReal } from '@/lib/formato'
@@ -91,6 +91,10 @@ export default function PagamentoPage() {
   }
 
   const podeInformar = podeInformarPagamento(comanda.estado, pedidos)
+  // Decisão 20: pagar com pedido ainda na cozinha é permitido, mas o cliente é avisado.
+  const pendentes = temPedidoPendente(pedidos)
+  const avisoPendentes =
+    'Ainda há pedidos sendo preparados. O valor já inclui esses pedidos e, depois de avisar que pagou, não dá para mudar nem cancelar pelo celular.'
 
   return (
     <div className="space-y-5 text-center">
@@ -114,6 +118,11 @@ export default function PagamentoPage() {
         </button>
       </div>
 
+      {pendentes && (
+        <p role="note" className="rounded-xl bg-alerta-clara px-4 py-3 text-left text-sm">
+          {avisoPendentes}
+        </p>
+      )}
       <button type="button" className="botao-primario w-full text-lg" disabled={!podeInformar} onClick={() => setConfirmando(true)}>
         Já paguei
       </button>
@@ -136,7 +145,11 @@ export default function PagamentoPage() {
           </>
         }
       >
-        <p>O caixa vai conferir o pagamento de {formatarReal(total)}. Enquanto isso, a mesa não recebe novos pedidos.</p>
+        <p>
+          O caixa vai conferir o pagamento de {formatarReal(total)}. Enquanto isso, a mesa não recebe novos pedidos e os
+          pedidos não podem mais ser mudados pelo celular.
+        </p>
+        {pendentes && <p className="mt-3 rounded-lg bg-alerta-clara px-3 py-2 text-sm">{avisoPendentes}</p>}
       </Modal>
     </div>
   )
