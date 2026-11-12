@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, NavLink, Outlet, useOutletContext, useParams } from 'react-router-dom'
 import { Carregando } from '@/components/Carregando'
 import { useAuth } from '@/hooks/useAuth'
@@ -31,6 +31,21 @@ export default function MesaLayout() {
   const carrinho = useCarrinho(numeroMesa)
   const { configs } = useConfig()
   const [aviso, setAviso] = useState<string | null>(null)
+  const cabecalho = useRef<HTMLElement>(null)
+
+  // Altura real do cabeçalho (cresce com o aviso "Sem conexão") numa variável
+  // CSS: a barra de categorias gruda logo abaixo, sem fresta nem sobreposição.
+  const fase = estado.fase
+  useEffect(() => {
+    const el = cabecalho.current
+    if (!el) return
+    const raiz = document.documentElement
+    const medir = () => raiz.style.setProperty('--altura-cabecalho', `${el.offsetHeight}px`)
+    medir()
+    const observador = new ResizeObserver(medir)
+    observador.observe(el)
+    return () => observador.disconnect()
+  }, [fase])
 
   // Mesa fechada: o carrinho que sobrou não vale para a próxima visita.
   const { limpar } = carrinho
@@ -59,7 +74,7 @@ export default function MesaLayout() {
 
   return (
     <div className="mx-auto min-h-dvh max-w-2xl pb-28">
-      <header className="sticky top-0 z-20 border-b border-borda bg-fundo/95 backdrop-blur">
+      <header ref={cabecalho} className="sticky top-0 z-20 border-b border-borda bg-fundo/95 backdrop-blur">
         <div className="flex items-baseline justify-between gap-3 px-4 pt-3">
           <p className="truncate text-lg font-bold tracking-tight">{nomeCasa}</p>
           <p className="shrink-0 text-sm text-tinta-suave">

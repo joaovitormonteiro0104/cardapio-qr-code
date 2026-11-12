@@ -1,7 +1,7 @@
 import { useEffect, useId, useState, type FormEvent } from 'react'
 import { Modal } from '@/components/Modal'
 import { centavosParaCampo, parseReal } from '@/domain/cardapio/formatacao'
-import { FOTO_TIPOS_ACEITOS, nomeItemValido, precoValido, problemaFoto } from '@/domain/cardapio/validacao'
+import { DESCRICAO_ITEM_MAX, FOTO_TIPOS_ACEITOS, nomeItemValido, precoValido, problemaFoto } from '@/domain/cardapio/validacao'
 import { ItemFormSchema, type Categoria, type ItemCardapio, type ItemForm } from '@/schemas/cardapio'
 import { ErroFoto, uploadFotoItem } from '@/repositories/storageRepo'
 
@@ -27,6 +27,7 @@ type Erros = Partial<Record<'nome' | 'preco' | 'categoria' | 'foto' | 'geral', s
 export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFechar, aoSalvar }: Props) {
   const ids = useId()
   const [nome, setNome] = useState('')
+  const [descricao, setDescricao] = useState('')
   const [preco, setPreco] = useState('')
   const [categoriaId, setCategoriaId] = useState('')
   const [disponivel, setDisponivel] = useState(true)
@@ -39,6 +40,7 @@ export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFe
   useEffect(() => {
     if (!aberto) return
     setNome(item?.nome ?? '')
+    setDescricao(item?.descricao ?? '')
     setPreco(item ? centavosParaCampo(item.precoCentavos) : '')
     setCategoriaId(item?.categoriaId ?? categoriaInicial ?? categorias[0]?.id ?? '')
     setDisponivel(item?.disponivel ?? true)
@@ -90,6 +92,7 @@ export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFe
       const urlFinal = arquivo ? await uploadFotoItem(arquivo) : fotoUrl
       const validacao = ItemFormSchema.safeParse({
         nome,
+        descricao,
         precoCentavos: centavos,
         categoriaId,
         disponivel,
@@ -144,6 +147,23 @@ export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFe
           />
           <ErroCampo id={`${ids}-nome-erro`} texto={erros.nome} />
           <p className="mt-1 text-xs text-tinta-suave">Tamanhos diferentes são itens separados (ex.: “X-Burguer grande”).</p>
+        </div>
+
+        <div>
+          <label htmlFor={`${ids}-descricao`} className="rotulo">
+            Descrição <span className="font-normal text-tinta-suave">(opcional)</span>
+          </label>
+          <textarea
+            id={`${ids}-descricao`}
+            className="campo min-h-20 py-2"
+            value={descricao}
+            maxLength={DESCRICAO_ITEM_MAX}
+            placeholder="Ex.: pão brioche, hambúrguer 150 g, cheddar e bacon"
+            onChange={e => setDescricao(e.target.value)}
+          />
+          <p className="mt-1 text-xs tabular-nums text-tinta-suave">
+            O que vem no item ou quanto serve. {descricao.length}/{DESCRICAO_ITEM_MAX}
+          </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">

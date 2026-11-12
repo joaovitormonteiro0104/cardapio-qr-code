@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { NOME_CATEGORIA_MAX, NOME_ITEM_MAX } from '@/domain/cardapio/validacao'
+import { DESCRICAO_ITEM_MAX, NOME_CATEGORIA_MAX, NOME_ITEM_MAX } from '@/domain/cardapio/validacao'
 
 const Timestamp = z.iso.datetime({ offset: true })
 
@@ -14,6 +14,7 @@ export type Categoria = z.infer<typeof CategoriaSchema>
 export const ItemCardapioSchema = z.object({
   id: z.uuid(),
   nome: z.string().min(1).max(NOME_ITEM_MAX),
+  descricao: z.string().max(DESCRICAO_ITEM_MAX).nullable(),
   precoCentavos: z.number().int().positive(),
   categoriaId: z.uuid(),
   disponivel: z.boolean(),
@@ -26,6 +27,13 @@ export type ItemCardapio = z.infer<typeof ItemCardapioSchema>
 /** Dados de formulário (criar/editar item), já convertidos pra centavos. */
 export const ItemFormSchema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome.').max(NOME_ITEM_MAX, 'Nome muito longo.'),
+  // Vazio vira null: o banco não aceita descrição em branco.
+  descricao: z
+    .string()
+    .trim()
+    .max(DESCRICAO_ITEM_MAX, `A descrição pode ter até ${DESCRICAO_ITEM_MAX} caracteres.`)
+    .nullable()
+    .transform(texto => (texto ? texto : null)),
   precoCentavos: z.number().int().positive('O preço precisa ser maior que zero.'),
   categoriaId: z.uuid('Escolha uma categoria.'),
   disponivel: z.boolean(),

@@ -12,12 +12,13 @@ import {
   type ItemForm,
 } from '@/schemas/cardapio'
 
-const COLUNAS_ITEM = 'id, nome, preco_centavos, categoria_id, disponivel, ativo, foto_url, criado_em'
+const COLUNAS_ITEM = 'id, nome, descricao, preco_centavos, categoria_id, disponivel, ativo, foto_url, criado_em'
 const COLUNAS_CATEGORIA = 'id, nome, ordem, ativa'
 
 interface LinhaItem {
   id: string
   nome: string
+  descricao: string | null
   preco_centavos: number
   categoria_id: string
   disponivel: boolean
@@ -37,6 +38,7 @@ function paraItem(linha: LinhaItem): ItemCardapio {
   return ItemCardapioSchema.parse({
     id: linha.id,
     nome: linha.nome,
+    descricao: linha.descricao,
     precoCentavos: linha.preco_centavos,
     categoriaId: linha.categoria_id,
     disponivel: linha.disponivel,
@@ -180,6 +182,7 @@ export async function reordenarCategorias(idsEmOrdem: readonly string[]): Promis
 function paraColunas(form: ItemForm) {
   return {
     nome: form.nome,
+    descricao: form.descricao,
     preco_centavos: form.precoCentavos,
     categoria_id: form.categoriaId,
     disponivel: form.disponivel,
@@ -222,6 +225,7 @@ export async function atualizarItem(antes: ItemCardapio, form: ItemForm): Promis
         item_id: antes.id,
         antes: {
           nome: antes.nome,
+          descricao: antes.descricao,
           preco_centavos: antes.precoCentavos,
           categoria_id: antes.categoriaId,
           disponivel: antes.disponivel,

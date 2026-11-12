@@ -1,4 +1,5 @@
 export const NOME_ITEM_MAX = 100
+export const DESCRICAO_ITEM_MAX = 200
 export const NOME_CATEGORIA_MAX = 60
 export const FOTO_TAMANHO_MAX_BYTES = 2 * 1024 * 1024
 export const FOTO_TIPOS_ACEITOS = ['image/jpeg', 'image/png', 'image/webp'] as const
