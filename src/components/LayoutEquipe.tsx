@@ -23,7 +23,16 @@ const LINKS_GERENCIA: Link[] = [
 ]
 
 /** Cabeçalho comum das telas da equipe (cozinha e gerência). */
-export function LayoutEquipe({ titulo, children }: { titulo: string; children: ReactNode }) {
+export function LayoutEquipe({
+  titulo,
+  tituloVisivel = true,
+  children,
+}: {
+  titulo: string
+  /** false: título só para leitor de tela (a aba ativa já diz onde se está), ganha altura. */
+  tituloVisivel?: boolean
+  children: ReactNode
+}) {
   const { papel, sair } = useAuth()
   const navegar = useNavigate()
   const { configs } = useConfig()
@@ -69,7 +78,7 @@ export function LayoutEquipe({ titulo, children }: { titulo: string; children: R
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-4 py-6">
-        <h1 className="mb-5 text-2xl font-bold tracking-tight">{titulo}</h1>
+        <h1 className={tituloVisivel ? 'mb-5 text-2xl font-bold tracking-tight' : 'sr-only'}>{titulo}</h1>
         {children}
       </main>
     </div>
