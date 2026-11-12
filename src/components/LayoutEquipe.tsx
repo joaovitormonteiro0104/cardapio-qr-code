@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
+import { useRotinasAutomaticas } from '@/hooks/useRotinasCozinha'
+import { useConfig } from '@/lib/config'
 
 interface Link {
   para: string
@@ -24,6 +26,9 @@ const LINKS_GERENCIA: Link[] = [
 export function LayoutEquipe({ titulo, children }: { titulo: string; children: ReactNode }) {
   const { papel, sair } = useAuth()
   const navegar = useNavigate()
+  const { configs } = useConfig()
+  // Rotinas automáticas rodam em qualquer tela da equipe (§6.11), não só em Pedidos.
+  useRotinasAutomaticas(configs)
   const links = papel === 'gerencia' ? [...LINKS_OPERACAO, ...LINKS_GERENCIA] : LINKS_OPERACAO
 
   async function deslogar() {

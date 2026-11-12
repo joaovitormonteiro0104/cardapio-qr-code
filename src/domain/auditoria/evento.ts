@@ -46,6 +46,8 @@ export const TIPOS_EVENTO = [
   'funcionario_criado',
   'funcionario_pin_trocado',
   'funcionario_desativado',
+  'funcionario_reativado',
+  'funcionario_papel_alterado',
   // correção de evento anterior (payload.corrige_id)
   'correcao',
 ] as const

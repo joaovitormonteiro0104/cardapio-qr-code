@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { motivoNaoPodeDesativar, type FuncionarioRegra } from '@/domain/equipe/regras'
+import { motivoNaoPodeDesativar, motivoNaoPodeMudarPapel, type FuncionarioRegra } from '@/domain/equipe/regras'
 
 const f = (id: string, papel: FuncionarioRegra['papel'], ativo = true): FuncionarioRegra => ({
   id,
@@ -33,5 +33,33 @@ describe('motivoNaoPodeDesativar', () => {
 
   it('já inativo', () => {
     expect(motivoNaoPodeDesativar(f('c', 'operacao', false), 'u-a', [gerenteA])).toBe('ja_inativo')
+  })
+})
+
+describe('motivoNaoPodeMudarPapel', () => {
+  const g1 = { id: 'g1', usuarioId: 'u-g1', papel: 'gerencia' as const, ativo: true }
+  const g2 = { id: 'g2', usuarioId: 'u-g2', papel: 'gerencia' as const, ativo: true }
+  const op = { id: 'op', usuarioId: 'u-op', papel: 'operacao' as const, ativo: true }
+  const inativo = { id: 'x', usuarioId: 'u-x', papel: 'operacao' as const, ativo: false }
+
+  it('promove operação a gerência', () => {
+    expect(motivoNaoPodeMudarPapel(op, 'gerencia', 'u-g1', [g1, op])).toBeNull()
+  })
+
+  it('rebaixa outro gerente quando sobra um', () => {
+    expect(motivoNaoPodeMudarPapel(g2, 'operacao', 'u-g1', [g1, g2])).toBeNull()
+  })
+
+  it('não rebaixa a si mesmo', () => {
+    expect(motivoNaoPodeMudarPapel(g1, 'operacao', 'u-g1', [g1, g2])).toBe('si_mesmo')
+  })
+
+  it('não rebaixa o último gerente', () => {
+    expect(motivoNaoPodeMudarPapel(g2, 'operacao', 'u-g1', [{ ...g1, ativo: false }, g2])).toBe('ultimo_gerente')
+  })
+
+  it('recusa inativo e papel igual', () => {
+    expect(motivoNaoPodeMudarPapel(inativo, 'gerencia', 'u-g1', [g1, inativo])).toBe('inativo')
+    expect(motivoNaoPodeMudarPapel(op, 'operacao', 'u-g1', [g1, op])).toBe('mesmo_papel')
   })
 })

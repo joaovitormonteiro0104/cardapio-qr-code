@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { NavLink, Outlet, useOutletContext, useParams } from 'react-router-dom'
+import { Link, NavLink, Outlet, useOutletContext, useParams } from 'react-router-dom'
 import { Carregando } from '@/components/Carregando'
+import { useAuth } from '@/hooks/useAuth'
 import { useCarrinho, type Carrinho } from '@/hooks/useCarrinho'
 import { useComanda, type EstadoComandaCliente } from '@/hooks/useComanda'
 import { useConfig } from '@/lib/config'
@@ -31,6 +32,12 @@ export default function MesaLayout() {
   const { configs } = useConfig()
   const [aviso, setAviso] = useState<string | null>(null)
 
+  // Mesa fechada: o carrinho que sobrou não vale para a próxima visita.
+  const { limpar } = carrinho
+  useEffect(() => {
+    if (estado.fase === 'encerrada') limpar()
+  }, [estado.fase, limpar])
+
   // Aviso de confirmação ("Pedido #N enviado") some sozinho: depois de alguns
   // segundos ele já não descreve o estado do pedido, que pode ter mudado.
   useEffect(() => {
@@ -43,6 +50,7 @@ export default function MesaLayout() {
   if (estado.fase === 'mesa_indisponivel') return <MesaIndisponivel />
   if (estado.fase === 'erro') return <ErroConexao />
   if (estado.fase === 'encerrada') return <MesaEncerrada />
+  if (estado.fase === 'funcionario') return <AparelhoDaEquipe />
   if (estado.fase === 'pedir_nome') return <PedirNome numeroMesa={numeroMesa} entrar={estado.entrar} />
 
   const nomeCasa = configs?.nomeEstabelecimento || 'Cardápio'
@@ -171,6 +179,37 @@ function MesaEncerrada() {
       <button type="button" className="botao-secundario mx-auto mt-6" onClick={() => window.location.reload()}>
         Abrir uma nova conta
       </button>
+    </main>
+  )
+}
+
+function AparelhoDaEquipe() {
+  const { sair } = useAuth()
+  const [saindo, setSaindo] = useState(false)
+
+  async function sairEAbrir() {
+    setSaindo(true)
+    try {
+      await sair()
+    } finally {
+      window.location.reload()
+    }
+  }
+
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 text-center">
+      <h1 className="text-2xl font-bold">Este aparelho está com login da equipe</h1>
+      <p className="mt-2 text-tinta-suave">
+        Para pedir como cliente, saia da conta da equipe. Para só testar, abra o QR numa janela anônima.
+      </p>
+      <div className="mt-6 flex flex-col gap-3">
+        <button type="button" className="botao-primario" disabled={saindo} onClick={() => void sairEAbrir()}>
+          {saindo ? 'Saindo…' : 'Sair da equipe e abrir a mesa'}
+        </button>
+        <Link to="/cozinha" className="botao-secundario">
+          Voltar para a cozinha
+        </Link>
+      </div>
     </main>
   )
 }

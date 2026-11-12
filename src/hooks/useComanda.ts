@@ -6,7 +6,7 @@ import * as pedidoRepo from '@/repositories/pedidoRepo'
 import type { Comanda, Mesa } from '@/schemas/comanda'
 import type { Pedido } from '@/schemas/pedido'
 
-export type FaseMesa = 'carregando' | 'mesa_indisponivel' | 'pedir_nome' | 'pronta' | 'encerrada' | 'erro'
+export type FaseMesa = 'carregando' | 'mesa_indisponivel' | 'pedir_nome' | 'pronta' | 'encerrada' | 'funcionario' | 'erro'
 
 export interface EstadoComandaCliente {
   fase: FaseMesa
@@ -42,7 +42,14 @@ export function useComanda(numeroMesa: number): EstadoComandaCliente {
           setFase('mesa_indisponivel')
           return
         }
-        await authRepo.entrarComoCliente()
+        // Aparelho logado como funcionário: não vira "cliente" com o login da
+        // equipe (misturaria a conta e a auditoria). A tela oferece sair.
+        const atual = await authRepo.entrarComoCliente()
+        if (cancelado) return
+        if (!atual.anonimo) {
+          setFase('funcionario')
+          return
+        }
         const encontrada = await mesaRepo.buscarMesaAtivaPorNumero(numeroMesa)
         if (cancelado) return
         if (!encontrada) {

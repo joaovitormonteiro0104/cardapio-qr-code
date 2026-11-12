@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { LayoutEquipe } from '@/components/LayoutEquipe'
 import { Modal } from '@/components/Modal'
-import { ATOR_SISTEMA } from '@/domain/auditoria/evento'
 import { motivoNaoPodeFechar, temPedidoPendente, type EstadoComanda } from '@/domain/comanda/estado'
-import { comandaInativa, podeFecharAutomaticamente } from '@/domain/comanda/sessao'
+import { comandaInativa } from '@/domain/comanda/sessao'
 import { totalComanda } from '@/domain/pedido/calculo'
 import { useAgora } from '@/hooks/usePedidosCozinha'
 import { useConfig } from '@/lib/config'
@@ -17,8 +16,6 @@ const GRUPOS: { estado: EstadoComanda; titulo: string; vazio: string }[] = [
   { estado: 'Paga', titulo: 'Pagas (fechar mesa)', vazio: 'Nenhuma conta paga esperando fechamento.' },
   { estado: 'Aberta', titulo: 'Abertas', vazio: 'Nenhuma mesa aberta.' },
 ]
-
-const INTERVALO_ROTINA_MS = 60_000
 
 export default function ContasPage() {
   const { configs } = useConfig()
@@ -48,32 +45,6 @@ export default function ContasPage() {
       aoConectar: () => void recarregar(),
     })
   }, [recarregar])
-
-  // Rotina (§6.11): comanda inativa, paga ou com total zero, sem pendentes → fecha sozinha (ator sistema).
-  useEffect(() => {
-    if (!configs) return
-    async function rodar() {
-      if (!configs) return
-      try {
-        const lista = await comandaRepo.listarComandasAbertas()
-        const agoraRotina = new Date()
-        for (const item of lista) {
-          if (comandaInativa(item.comanda, configs, agoraRotina) && podeFecharAutomaticamente(item.comanda, item.pedidos)) {
-            try {
-              await comandaRepo.fecharMesa(item.comanda.id, ATOR_SISTEMA)
-            } catch (falha) {
-              console.error('fechamento automático', item.comanda.numero, falha)
-            }
-          }
-        }
-      } catch (falha) {
-        console.error('fechamento automático', falha)
-      }
-    }
-    void rodar()
-    const id = setInterval(() => void rodar(), INTERVALO_ROTINA_MS)
-    return () => clearInterval(id)
-  }, [configs])
 
   async function executar(id: string, acao: () => Promise<unknown>, sucesso: string) {
     setOcupado(id)

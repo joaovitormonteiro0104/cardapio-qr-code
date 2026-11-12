@@ -1105,6 +1105,7 @@ Decisões **confirmadas pelo dono do produto em 2026-11-09**:
 
 | 19 | (2026-11-12) Endurecimento da RLS (§7): privilégio de UPDATE por coluna, estados permitidos ao cliente, preço do item igual ao do cardápio no INSERT e auditoria sem falsificação de ator. Exceção consciente ao "nada de regra de negócio na RLS", aprovada pelo dono do produto | 3, 6, 9, 11, 12 |
 | 20 | (2026-11-12) Pagamento com pedidos pendentes: só avisar o cliente (não bloqueia); depois do "já paguei" o cliente não edita/cancela/chama garçom; o auto-cancelamento ignora contas fora de `Aberta` | 9, 12 |
+| 21 | (2026-11-12) Fase 3 da revisão: rotinas automáticas (§6.11) rodam em QUALQUER tela da equipe (`LayoutEquipe`), não só em Pedidos/Contas; mesa com conta aberta não pode ser desativada; a Edge Function `equipe` ganhou `reativar` e `mudarPapel` (gerente não rebaixa a si mesmo nem o último gerente); aparelho com login da equipe que abre `/mesa/N` vê um aviso em vez de virar cliente; carrinho é limpo quando a mesa fecha | 9, 13, 14 |
 
 Ainda em aberto: nenhuma no momento. A escolha entre Backblaze B2 e S3 pro backup é feita no item 16.
 
@@ -1114,7 +1115,7 @@ Ainda em aberto: nenhuma no momento. A escolha entre Backblaze B2 e S3 pro backu
 
 **Revisão 5 (2026-11-12)** — revisão de segurança:
 - §7: endurecimento da RLS e teste `rls_abusos.sql`.
-- §15: decisões 19 e 20; §6.5 e §6.8 atualizadas (regras de pagamento).
+- §15: decisões 19, 20 e 21; §6.5 e §6.8 atualizadas (regras de pagamento).
 
 **Revisão 4 (2026-11-10)** — itens 2 e 3 executados:
 - §7: função `comanda_aberta_da_mesa`, operação lê todas as mesas, trava extra de privilégios, roteiro de teste.

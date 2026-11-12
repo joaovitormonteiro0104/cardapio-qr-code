@@ -3,7 +3,6 @@ import { EditarItensModal } from '@/components/EditarItensModal'
 import { LayoutEquipe } from '@/components/LayoutEquipe'
 import type { EstadoPedido } from '@/domain/pedido/estado'
 import { useAgora, usePedidosCozinha } from '@/hooks/usePedidosCozinha'
-import { useAutoCancelamento } from '@/hooks/useRotinasCozinha'
 import { useConfig } from '@/lib/config'
 import * as pedidoRepo from '@/repositories/pedidoRepo'
 import type { PedidoCozinha } from '@/repositories/pedidoRepo'
@@ -36,8 +35,6 @@ export default function PedidosPage() {
   const [aviso, setAviso] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null)
   const [cancelamento, setCancelamento] = useState<EtapaCancelamento>(null)
   const [editando, setEditando] = useState<string | null>(null)
-
-  useAutoCancelamento(configs)
 
   async function executar(pedidoId: string, acao: () => Promise<void>, sucesso?: string) {
     setOcupado(pedidoId)

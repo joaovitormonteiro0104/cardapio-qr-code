@@ -58,7 +58,11 @@ export default function MesasPage() {
       await carregar()
     } catch (falha) {
       console.error(falha)
-      setErro('Não foi possível salvar.')
+      setErro(
+        falha instanceof mesaRepo.MesaComContaAbertaError
+          ? `A mesa ${mesa.numero} está com a conta #${falha.numeroConta} aberta. Feche a conta (aba Contas) antes de desativar.`
+          : 'Não foi possível salvar.',
+      )
     } finally {
       setOcupado(null)
     }

@@ -39,7 +39,25 @@ export async function criarMesa(numero: number): Promise<Mesa> {
   return mesa
 }
 
+/** A mesa ainda tem conta não fechada: desativar tiraria o acesso dos clientes à conta e ao Pix. */
+export class MesaComContaAbertaError extends Error {
+  constructor(readonly numeroConta: number) {
+    super(`Mesa com a conta #${numeroConta} aberta`)
+    this.name = 'MesaComContaAbertaError'
+  }
+}
+
 export async function definirMesaAtiva(mesa: Mesa, ativa: boolean): Promise<Mesa> {
+  if (!ativa) {
+    const { data: aberta, error: erroConta } = await supabase
+      .from('comandas')
+      .select('numero')
+      .eq('mesa_id', mesa.id)
+      .neq('estado', 'Fechada')
+      .maybeSingle()
+    if (erroConta) throw new Error(`definirMesaAtiva: ${erroConta.message}`)
+    if (aberta) throw new MesaComContaAbertaError((aberta as { numero: number }).numero)
+  }
   const { data, error } = await supabase.from('mesas').update({ ativa }).eq('id', mesa.id).select(COLUNAS).single()
   if (error) throw new Error(`definirMesaAtiva: ${error.message}`)
   await auditoriaRepo.registrar(

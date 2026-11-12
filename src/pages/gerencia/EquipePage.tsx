@@ -1,13 +1,24 @@
 import { useCallback, useEffect, useId, useState, type FormEvent } from 'react'
 import { LayoutEquipe } from '@/components/LayoutEquipe'
 import { Modal } from '@/components/Modal'
-import { MENSAGENS_NAO_DESATIVA, motivoNaoPodeDesativar } from '@/domain/equipe/regras'
+import {
+  MENSAGENS_NAO_DESATIVA,
+  MENSAGENS_NAO_MUDA_PAPEL,
+  motivoNaoPodeDesativar,
+  motivoNaoPodeMudarPapel,
+} from '@/domain/equipe/regras'
 import { useAuth } from '@/hooks/useAuth'
 import * as equipeRepo from '@/repositories/equipeRepo'
 import type { Funcionario } from '@/repositories/equipeRepo'
 import { PinSchema, type Papel } from '@/schemas/auth'
 
-type Acao = { tipo: 'criar' } | { tipo: 'pin'; funcionario: Funcionario } | { tipo: 'desativar'; funcionario: Funcionario } | null
+type Acao =
+  | { tipo: 'criar' }
+  | { tipo: 'pin'; funcionario: Funcionario }
+  | { tipo: 'desativar'; funcionario: Funcionario }
+  | { tipo: 'reativar'; funcionario: Funcionario }
+  | { tipo: 'papel'; funcionario: Funcionario; papel: Papel }
+  | null
 
 const ROTULO_PAPEL: Record<Papel, string> = { operacao: 'Operação', gerencia: 'Gerência' }
 
@@ -58,6 +69,8 @@ export default function EquipePage() {
       <ul className="max-w-3xl divide-y divide-borda rounded-2xl bg-superficie ring-1 ring-borda">
         {equipe.map(f => {
           const bloqueio = usuario ? motivoNaoPodeDesativar({ ...f }, usuario.id, paraRegra) : 'si_mesmo'
+          const outroPapel: Papel = f.papel === 'gerencia' ? 'operacao' : 'gerencia'
+          const bloqueioPapel = usuario ? motivoNaoPodeMudarPapel({ ...f }, outroPapel, usuario.id, paraRegra) : 'si_mesmo'
           return (
             <li key={f.id} className={`flex flex-wrap items-center gap-3 px-4 py-3 ${f.ativo ? '' : 'opacity-60'}`}>
               <div className="min-w-0 flex-1">
@@ -70,10 +83,24 @@ export default function EquipePage() {
                   {!f.ativo && <span className="ml-2 font-semibold">Desativado</span>}
                 </p>
               </div>
+              {!f.ativo && (
+                <button type="button" className="botao-secundario text-sm" onClick={() => setAcao({ tipo: 'reativar', funcionario: f })}>
+                  Reativar
+                </button>
+              )}
               {f.ativo && (
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button type="button" className="botao-secundario text-sm" onClick={() => setAcao({ tipo: 'pin', funcionario: f })}>
                     Trocar PIN
+                  </button>
+                  <button
+                    type="button"
+                    className="botao-secundario text-sm"
+                    disabled={bloqueioPapel !== null}
+                    title={bloqueioPapel ? MENSAGENS_NAO_MUDA_PAPEL[bloqueioPapel] : undefined}
+                    onClick={() => setAcao({ tipo: 'papel', funcionario: f, papel: outroPapel })}
+                  >
+                    {outroPapel === 'gerencia' ? 'Tornar gerente' : 'Tirar gerência'}
                   </button>
                   <button
                     type="button"
@@ -93,6 +120,32 @@ export default function EquipePage() {
 
       {acao?.tipo === 'criar' && <CriarModal aoFechar={() => setAcao(null)} aoConcluir={concluir} />}
       {acao?.tipo === 'pin' && <PinModal funcionario={acao.funcionario} aoFechar={() => setAcao(null)} aoConcluir={concluir} />}
+      {acao?.tipo === 'reativar' && (
+        <ConfirmarModal
+          titulo={`Reativar ${acao.funcionario.nome}?`}
+          texto={`A matrícula ${acao.funcionario.matricula} volta a entrar com o mesmo PIN de antes. Se não lembrar, troque o PIN depois.`}
+          botao="Reativar"
+          executar={() => equipeRepo.reativar(acao.funcionario.id)}
+          sucesso={`${acao.funcionario.nome} foi reativado.`}
+          aoFechar={() => setAcao(null)}
+          aoConcluir={concluir}
+        />
+      )}
+      {acao?.tipo === 'papel' && (
+        <ConfirmarModal
+          titulo={acao.papel === 'gerencia' ? `Tornar ${acao.funcionario.nome} gerente?` : `Tirar a gerência de ${acao.funcionario.nome}?`}
+          texto={
+            acao.papel === 'gerencia'
+              ? 'Passa a ver cardápio, mesas, equipe, auditoria e configurações, além de pedidos e contas.'
+              : 'Continua com Pedidos e Contas, mas perde o acesso às telas de gerência.'
+          }
+          botao={acao.papel === 'gerencia' ? 'Tornar gerente' : 'Tirar gerência'}
+          executar={() => equipeRepo.mudarPapel(acao.funcionario.id, acao.papel)}
+          sucesso={`${acao.funcionario.nome} agora é ${ROTULO_PAPEL[acao.papel].toLowerCase()}.`}
+          aoFechar={() => setAcao(null)}
+          aoConcluir={concluir}
+        />
+      )}
       {acao?.tipo === 'desativar' && (
         <DesativarModal funcionario={acao.funcionario} aoFechar={() => setAcao(null)} aoConcluir={concluir} />
       )}
@@ -258,6 +311,52 @@ function DesativarModal({ funcionario, aoFechar, aoConcluir }: PropsModal & { fu
       }
     >
       <p>A matrícula {funcionario.matricula} perde o acesso na hora, inclusive em tablets já abertos. O histórico na auditoria continua.</p>
+      <p role="alert" className="mt-2 min-h-5 text-sm font-medium text-perigo">{erro}</p>
+    </Modal>
+  )
+}
+
+function ConfirmarModal({
+  titulo,
+  texto,
+  botao,
+  executar,
+  sucesso,
+  aoFechar,
+  aoConcluir,
+}: PropsModal & { titulo: string; texto: string; botao: string; executar: () => Promise<void>; sucesso: string }) {
+  const [erro, setErro] = useState<string | null>(null)
+  const [enviando, setEnviando] = useState(false)
+
+  async function confirmar() {
+    setEnviando(true)
+    setErro(null)
+    try {
+      await executar()
+      await aoConcluir(sucesso)
+    } catch (falha) {
+      console.error(falha)
+      setErro(mensagem(falha))
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <Modal
+      aberto
+      titulo={titulo}
+      aoFechar={aoFechar}
+      acoes={
+        <>
+          <button type="button" className="botao-secundario" onClick={aoFechar}>Cancelar</button>
+          <button type="button" className="botao-primario" disabled={enviando} onClick={() => void confirmar()}>
+            {enviando ? 'Salvando…' : botao}
+          </button>
+        </>
+      }
+    >
+      <p>{texto}</p>
       <p role="alert" className="mt-2 min-h-5 text-sm font-medium text-perigo">{erro}</p>
     </Modal>
   )

@@ -34,6 +34,8 @@ export const ROTULOS_TIPO_EVENTO: Record<TipoEvento, string> = {
   funcionario_criado: 'Funcionário cadastrado',
   funcionario_pin_trocado: 'PIN trocado',
   funcionario_desativado: 'Funcionário desativado',
+  funcionario_reativado: 'Funcionário reativado',
+  funcionario_papel_alterado: 'Papel do funcionário alterado',
   correcao: 'Correção de evento',
 }
 

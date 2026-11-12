@@ -9,11 +9,18 @@
 //   { acao: 'criar', matricula, nome, papel, pin }
 //   { acao: 'trocarPin', funcionarioId, pin }
 //   { acao: 'desativar', funcionarioId }
+//   { acao: 'reativar', funcionarioId }
+//   { acao: 'mudarPapel', funcionarioId, papel }
 // Só gerente ATIVO pode chamar (senão 403).
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { z } from 'npm:zod@4'
-import { MENSAGENS_NAO_DESATIVA, motivoNaoPodeDesativar } from '../../../src/domain/equipe/regras.ts'
+import {
+  MENSAGENS_NAO_DESATIVA,
+  MENSAGENS_NAO_MUDA_PAPEL,
+  motivoNaoPodeDesativar,
+  motivoNaoPodeMudarPapel,
+} from '../../../src/domain/equipe/regras.ts'
 
 // --- Schemas -----------------------------------------------------------------
 // Duplicados de src/schemas/auth.ts (o bundler da função não resolve o
@@ -34,6 +41,8 @@ const CorpoSchema = z.discriminatedUnion('acao', [
   }),
   z.object({ acao: z.literal('trocarPin'), funcionarioId: z.uuid(), pin: PinSchema }),
   z.object({ acao: z.literal('desativar'), funcionarioId: z.uuid() }),
+  z.object({ acao: z.literal('reativar'), funcionarioId: z.uuid() }),
+  z.object({ acao: z.literal('mudarPapel'), funcionarioId: z.uuid(), papel: PapelSchema }),
 ])
 
 const CORS = {
@@ -137,13 +146,36 @@ Deno.serve(async req => {
     return resposta(200, { ok: true })
   }
 
-  // desativar
+  if (dados.acao === 'reativar') {
+    if (alvo.ativo) return resposta(409, { erro: 'Este funcionário já está ativo.' })
+    const { error: erroDesbanir } = await admin.auth.admin.updateUserById(alvo.usuario_id, { ban_duration: 'none' })
+    if (erroDesbanir) return resposta(500, { erro: 'Não foi possível devolver o acesso.' })
+    const { error } = await admin.from('funcionarios').update({ ativo: true }).eq('id', alvo.id)
+    if (error) return resposta(500, { erro: 'Não foi possível reativar.' })
+    await auditar('funcionario_reativado', { funcionario_id: alvo.id, matricula: alvo.matricula })
+    return resposta(200, { ok: true })
+  }
+
   const { data: equipe } = await admin.from('funcionarios').select('id, usuario_id, papel, ativo')
-  const motivo = motivoNaoPodeDesativar(
-    { id: alvo.id, usuarioId: alvo.usuario_id, papel: alvo.papel, ativo: alvo.ativo },
-    quem.user.id,
-    (equipe ?? []).map(f => ({ id: f.id, usuarioId: f.usuario_id, papel: f.papel, ativo: f.ativo })),
-  )
+  const paraRegra = (equipe ?? []).map(f => ({ id: f.id, usuarioId: f.usuario_id, papel: f.papel, ativo: f.ativo }))
+  const alvoRegra = { id: alvo.id, usuarioId: alvo.usuario_id, papel: alvo.papel, ativo: alvo.ativo }
+
+  if (dados.acao === 'mudarPapel') {
+    const motivoPapel = motivoNaoPodeMudarPapel(alvoRegra, dados.papel, quem.user.id, paraRegra)
+    if (motivoPapel) return resposta(409, { erro: MENSAGENS_NAO_MUDA_PAPEL[motivoPapel] })
+    const { error } = await admin.from('funcionarios').update({ papel: dados.papel }).eq('id', alvo.id)
+    if (error) return resposta(500, { erro: 'Não foi possível mudar o papel.' })
+    await auditar('funcionario_papel_alterado', {
+      funcionario_id: alvo.id,
+      matricula: alvo.matricula,
+      antes: alvo.papel,
+      depois: dados.papel,
+    })
+    return resposta(200, { ok: true })
+  }
+
+  // desativar
+  const motivo = motivoNaoPodeDesativar(alvoRegra, quem.user.id, paraRegra)
   if (motivo) return resposta(409, { erro: MENSAGENS_NAO_DESATIVA[motivo] })
 
   const { error: erroDesativar } = await admin.from('funcionarios').update({ ativo: false }).eq('id', alvo.id)

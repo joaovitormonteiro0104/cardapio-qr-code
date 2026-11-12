@@ -67,3 +67,12 @@ export async function trocarPin(funcionarioId: string, pin: string): Promise<voi
 export async function desativar(funcionarioId: string): Promise<void> {
   await chamar({ acao: 'desativar', funcionarioId })
 }
+
+/** Devolve o acesso (o PIN continua o mesmo de antes). */
+export async function reativar(funcionarioId: string): Promise<void> {
+  await chamar({ acao: 'reativar', funcionarioId })
+}
+
+export async function mudarPapel(funcionarioId: string, papel: Papel): Promise<void> {
+  await chamar({ acao: 'mudarPapel', funcionarioId, papel: PapelSchema.parse(papel) })
+}
