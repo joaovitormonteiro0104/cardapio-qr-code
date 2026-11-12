@@ -200,6 +200,14 @@ begin
   exception when others then r := r || format(E'B8 caixa: erro (%s) -> FALHOU\n', sqlerrm); end;
   execute format('set local role %I', dono);
 
+  -- Nomes da mesa: o cliente vê as sessões da própria conta, nunca de outra
+  perform set_config('request.jwt.claims', json_build_object('sub', c1, 'role', 'authenticated', 'is_anonymous', true)::text, true);
+  set local role authenticated;
+  select count(*) into n from sessoes_mesa where comanda_id <> com1;
+  r := r || format(E'A13 cliente lê sessões de outra conta: %s linhas -> %s
+', n, case when n = 0 then 'OK' else 'FALHOU' end);
+  execute format('set local role %I', dono);
+
   -- O CLI corta mensagens longas: resumo primeiro, depois só as falhas.
   raise exception E'RESUMO: % OK, % FALHOU\n%',
     (length(r) - length(replace(r, '-> OK', ''))) / 5,

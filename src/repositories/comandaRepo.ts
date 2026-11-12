@@ -122,6 +122,18 @@ export async function entrarNaMesa(mesa: Mesa, nomeDigitado: string): Promise<Co
   throw new Error('entrarNaMesa: não foi possível abrir nem entrar na comanda')
 }
 
+/**
+ * Nome de quem está na mesa, por usuário (conta dividida: "Pedido de Ana").
+ * A RLS só mostra as sessões da própria comanda.
+ */
+export async function nomesDaComanda(comandaId: string): Promise<Map<string, string | null>> {
+  const { data, error } = await supabase.from('sessoes_mesa').select('usuario_id, nome_cliente').eq('comanda_id', comandaId)
+  if (error) throw new Error(`nomesDaComanda: ${error.message}`)
+  return new Map(
+    (data as { usuario_id: string; nome_cliente: string | null }[]).map(s => [s.usuario_id, s.nome_cliente]),
+  )
+}
+
 /** Atualiza ultima_atividade_em (base do fallback de inatividade, §6.4). */
 export async function registrarAtividade(comandaId: string): Promise<void> {
   const { error } = await supabase

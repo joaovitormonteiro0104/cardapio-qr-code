@@ -13,6 +13,10 @@ export interface EstadoComandaCliente {
   mesa: Mesa | null
   comanda: Comanda | null
   pedidos: Pedido[]
+  /** Quem está na mesa (usuário → nome), para mostrar quem pediu cada pedido. */
+  nomes: ReadonlyMap<string, string | null>
+  /** Usuário deste celular. */
+  usuarioId: string | null
   conectado: boolean
   entrar: (nome: string) => Promise<void>
   recarregar: () => Promise<void>
@@ -29,6 +33,8 @@ export function useComanda(numeroMesa: number): EstadoComandaCliente {
   const [mesa, setMesa] = useState<Mesa | null>(null)
   const [comanda, setComanda] = useState<Comanda | null>(null)
   const [pedidos, setPedidos] = useState<Pedido[]>([])
+  const [nomes, setNomes] = useState<ReadonlyMap<string, string | null>>(new Map())
+  const [usuarioId, setUsuarioId] = useState<string | null>(null)
   const [conectado, setConectado] = useState(true)
   const comandaId = comanda?.id ?? null
   const carregandoRef = useRef(false)
@@ -50,6 +56,7 @@ export function useComanda(numeroMesa: number): EstadoComandaCliente {
           setFase('funcionario')
           return
         }
+        setUsuarioId(atual.id)
         const encontrada = await mesaRepo.buscarMesaAtivaPorNumero(numeroMesa)
         if (cancelado) return
         if (!encontrada) {
@@ -80,9 +87,10 @@ export function useComanda(numeroMesa: number): EstadoComandaCliente {
     if (!comandaId || carregandoRef.current) return
     carregandoRef.current = true
     try {
-      const [atual, lista] = await Promise.all([
+      const [atual, lista, quem] = await Promise.all([
         comandaRepo.buscarComanda(comandaId),
         pedidoRepo.listarPedidosDaComanda(comandaId),
+        comandaRepo.nomesDaComanda(comandaId),
       ])
       // Mesa fechada: a sessão foi encerrada e a RLS já não mostra a comanda.
       if (!atual || atual.estado === 'Fechada') {
@@ -91,6 +99,7 @@ export function useComanda(numeroMesa: number): EstadoComandaCliente {
       }
       setComanda(atual)
       setPedidos(lista)
+      setNomes(quem)
     } catch (falha) {
       console.error(falha)
     } finally {
@@ -132,5 +141,5 @@ export function useComanda(numeroMesa: number): EstadoComandaCliente {
     [mesa],
   )
 
-  return { fase, mesa, comanda, pedidos, conectado, entrar, recarregar, atualizarComanda: setComanda }
+  return { fase, mesa, comanda, pedidos, nomes, usuarioId, conectado, entrar, recarregar, atualizarComanda: setComanda }
 }

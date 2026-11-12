@@ -1106,6 +1106,7 @@ Decisões **confirmadas pelo dono do produto em 2026-11-09**:
 | 19 | (2026-11-12) Endurecimento da RLS (§7): privilégio de UPDATE por coluna, estados permitidos ao cliente, preço do item igual ao do cardápio no INSERT e auditoria sem falsificação de ator. Exceção consciente ao "nada de regra de negócio na RLS", aprovada pelo dono do produto | 3, 6, 9, 11, 12 |
 | 20 | (2026-11-12) Pagamento com pedidos pendentes: só avisar o cliente (não bloqueia); depois do "já paguei" o cliente não edita/cancela/chama garçom; o auto-cancelamento ignora contas fora de `Aberta` | 9, 12 |
 | 21 | (2026-11-12) Fase 3 da revisão: rotinas automáticas (§6.11) rodam em QUALQUER tela da equipe (`LayoutEquipe`), não só em Pedidos/Contas; mesa com conta aberta não pode ser desativada; a Edge Function `equipe` ganhou `reativar` e `mudarPapel` (gerente não rebaixa a si mesmo nem o último gerente); aparelho com login da equipe que abre `/mesa/N` vê um aviso em vez de virar cliente; carrinho é limpo quando a mesa fecha | 9, 13, 14 |
+| 22 | (2026-11-12) Revisão de design (item 15): `itens_cardapio.descricao` opcional (até 200), observação enviada dentro da janela do pedido, e o cliente lê as `sessoes_mesa` da PRÓPRIA comanda (nova política de SELECT) para mostrar quem pediu cada pedido ("Seu pedido" / "Pedido de Ana") | 6, 15 |
 
 Ainda em aberto: nenhuma no momento. A escolha entre Backblaze B2 e S3 pro backup é feita no item 16.
 
