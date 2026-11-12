@@ -1,5 +1,6 @@
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
+import { variantesMatricula } from '@/domain/equipe/matricula'
 import { LoginSchema, PapelSchema, emailSintetico, type Papel } from '@/schemas/auth'
 
 export interface UsuarioAtual {
@@ -34,19 +35,24 @@ export async function entrarComoFuncionario(matricula: string, pin: string): Pro
   const dados = LoginSchema.safeParse({ matricula, pin })
   if (!dados.success) throw new ErroLogin('credenciais', 'entrarComoFuncionario: formato inválido')
 
-  const { error } = await supabase.auth.signInWithPassword({
-    email: emailSintetico(dados.data.matricula),
-    password: dados.data.pin,
-  })
-  if (error) {
-    if (error.code === 'invalid_credentials') {
-      throw new ErroLogin('credenciais', `entrarComoFuncionario: ${error.message}`)
+  // "1" e "001" são a mesma pessoa para quem digita: tenta as formas prováveis.
+  let entrou = false
+  for (const matriculaTentada of variantesMatricula(dados.data.matricula)) {
+    const { error } = await supabase.auth.signInWithPassword({
+      email: emailSintetico(matriculaTentada),
+      password: dados.data.pin,
+    })
+    if (!error) {
+      entrou = true
+      break
     }
+    if (error.code === 'invalid_credentials') continue
     if (error.status === 429 || error.code === 'over_request_rate_limit') {
       throw new ErroLogin('limite', `entrarComoFuncionario: ${error.message}`)
     }
     throw new ErroLogin('rede', `entrarComoFuncionario: ${error.message}`)
   }
+  if (!entrou) throw new ErroLogin('credenciais', 'entrarComoFuncionario: credenciais inválidas')
 
   const papel = await getPapelAtual()
   if (!papel) {

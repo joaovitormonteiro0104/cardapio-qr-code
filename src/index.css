@@ -11,6 +11,8 @@
   --color-fundo: oklch(0.965 0.002 250);
   --color-superficie: oklch(1 0 0);
   --color-borda: oklch(0.9 0.012 70);
+  /* Borda de campos de formulário: contraste ≥ 3:1 com o fundo (WCAG 1.4.11). */
+  --color-borda-campo: oklch(0.62 0.015 60);
   --color-tinta: oklch(0.24 0.02 50);
   --color-tinta-suave: oklch(0.45 0.02 55);
 
@@ -87,7 +89,7 @@
   @apply botao bg-perigo text-white hover:brightness-95;
 }
 @utility campo {
-  @apply min-h-11 w-full rounded-xl border border-borda bg-superficie px-3 text-base text-tinta placeholder:text-tinta-suave focus:border-brasa focus:outline-none focus:ring-2 focus:ring-brasa/30 aria-invalid:border-perigo aria-invalid:ring-2 aria-invalid:ring-perigo/20;
+  @apply min-h-11 w-full rounded-xl border border-borda-campo bg-superficie px-3 text-base text-tinta placeholder:text-tinta-suave focus:border-brasa focus:outline-none focus:ring-2 focus:ring-brasa/30 aria-invalid:border-perigo aria-invalid:ring-2 aria-invalid:ring-perigo/20;
 }
 /* Rolagem horizontal sem a barra cinza (chips de categoria). */
 @utility sem-barra-rolagem {
