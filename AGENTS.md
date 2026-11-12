@@ -444,7 +444,13 @@ As três funções têm `execute` revogado de `anon` e liberado só pra `authent
 
 **Trava extra**: além da ausência de política, os privilégios `update, delete, truncate` em `eventos_auditoria` e `delete, truncate` em `comandas`, `pedidos` e `itens_pedido` são revogados de `anon` e `authenticated` (TRUNCATE não passa pela RLS).
 
-**Teste**: [`supabase/testes/rls_roteiro.sql`](supabase/testes/rls_roteiro.sql) cobre os 5 casos do item 3. Pode ser colado no SQL Editor ou rodado com `npx supabase db query --remote --yes -f supabase/testes/rls_roteiro.sql`; termina com um erro proposital que mostra o relatório e desfaz tudo. Atualize-o quando mudar políticas.
+**Endurecimento (decisão 19, migration `20261112000000_rls_endurecimento.sql`)**: a revisão de 2026-11-12 mostrou que, chamando a API direto, um cliente mudava preços, cancelava pedido entregue, marcava a conta como paga e forjava auditoria. Hoje:
+- `UPDATE` só nas colunas que o app usa: `itens_pedido(quantidade, removido_em)`, `pedidos(estado, estado_anterior, estado_desde, cancelamento_motivo)`, `comandas(estado, observacao, ultima_atividade_em)`, `sessoes_mesa(encerrada_em)`. Preço e nome de item pedido nunca mudam.
+- Cliente: abre conta só `Aberta` em mesa ativa; mexe na conta só em `Aberta`/`AguardandoPagamento` e só pode deixá-la num desses; cria pedido só `Recebido`, em conta `Aberta`, em nome próprio; atualiza pedido só em `Recebido`/`Preparando`/`Pronto`, levando a esses ou a `Cancelado`/`EdicaoSolicitada`; insere item só em pedido `Recebido` com preço e nome IGUAIS aos do cardápio; edita item só com pedido em `Recebido`/`Preparando`; só se vincula a conta não fechada (`comanda_nao_fechada()`).
+- Auditoria: `funcionario` só com papel ativo e `ator_id` = a própria matrícula; `cliente` só com o próprio `auth.uid()`; `sistema` só da equipe.
+- É uma EXCEÇÃO consciente à regra de ouro abaixo: listas de estados e igualdade de preço, nada além. A regra completa (transições, janela de edição) continua em `src/domain/*`.
+
+**Teste**: [`supabase/testes/rls_roteiro.sql`](supabase/testes/rls_roteiro.sql) cobre os 5 casos do item 3. Pode ser colado no SQL Editor ou rodado com `npx supabase db query --remote --yes -f supabase/testes/rls_roteiro.sql`; termina com um erro proposital que mostra o relatório e desfaz tudo. Atualize-o quando mudar políticas. [`supabase/testes/rls_abusos.sql`](supabase/testes/rls_abusos.sql) cobre os abusos da decisão 19 e os fluxos normais do app (24 casos, mesmo jeito de rodar).
 
 **Regra de ouro**: se uma política RLS precisa de IF/ELSE complexo, você está fazendo errado — esse IF/ELSE pertence a `src/domain/*`.
 
@@ -1095,11 +1101,17 @@ Decisões **confirmadas pelo dono do produto em 2026-11-09**:
 | 13 | (2026-11-10) `authRepo.getPapelAtual()` usa `supabase.rpc('papel_atual')`: o funcionário de operação não precisa ler a tabela `funcionarios`, e a RLS de §7 fica como está | 4 |
 | 12 | (2026-11-10) `config.toml` alinhado aos valores do projeto remoto (confirmação de email ligada, MFA TOTP ligado, pool etc.); só o login anônimo mudou no remoto. Comandos do CLI 3 contra o projeto usam `--remote` (o padrão é o banco local, que exige Docker) | 3 |
 
+| 19 | (2026-11-12) Endurecimento da RLS (§7): privilégio de UPDATE por coluna, estados permitidos ao cliente, preço do item igual ao do cardápio no INSERT e auditoria sem falsificação de ator. Exceção consciente ao "nada de regra de negócio na RLS", aprovada pelo dono do produto | 3, 6, 9, 11, 12 |
+
 Ainda em aberto: nenhuma no momento. A escolha entre Backblaze B2 e S3 pro backup é feita no item 16.
 
 ---
 
 ## 16. Histórico de revisões deste arquivo
+
+**Revisão 5 (2026-11-12)** — revisão de segurança:
+- §7: endurecimento da RLS e teste `rls_abusos.sql`.
+- §15: decisão 19.
 
 **Revisão 4 (2026-11-10)** — itens 2 e 3 executados:
 - §7: função `comanda_aberta_da_mesa`, operação lê todas as mesas, trava extra de privilégios, roteiro de teste.
