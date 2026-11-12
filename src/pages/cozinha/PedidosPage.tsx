@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { AvisoFlutuante, FaixaSemConexao, type Aviso } from '@/components/AvisoFlutuante'
 import { EditarItensModal } from '@/components/EditarItensModal'
 import { LayoutEquipe } from '@/components/LayoutEquipe'
 import type { EstadoPedido } from '@/domain/pedido/estado'
@@ -20,7 +21,6 @@ const COLUNAS: { titulo: string; estado: EstadoPedido; cor: string }[] = [
 const SEGUNDOS_DESFAZER = 5
 /** Quanto tempo um pedido recém-chegado fica destacado. */
 const MS_DESTAQUE_NOVO = 8000
-const DURACAO_AVISO_MS = 5000
 
 /** Coluna do pedido: estados temporários ficam na coluna de onde vieram. */
 function colunaDe(pedido: PedidoCozinha): EstadoPedido {
@@ -39,7 +39,7 @@ export default function PedidosPage() {
   const { configs } = useConfig()
   const agora = useAgora(1000)
   const [ocupado, setOcupado] = useState<string | null>(null)
-  const [aviso, setAviso] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null)
+  const [aviso, setAviso] = useState<Aviso | null>(null)
   const [cancelamento, setCancelamento] = useState<EtapaCancelamento>(null)
   const [editando, setEditando] = useState<string | null>(null)
   const [pendentes, setPendentes] = useState<Record<string, { para: EstadoPedido; ate: number }>>({})
@@ -48,13 +48,6 @@ export default function PedidosPage() {
   const [somLigado, setSomLigado] = useState(false)
   const temporizadores = useRef<Record<string, number>>({})
   const vistos = useRef<Set<string> | null>(null)
-
-  // Aviso de ação some sozinho.
-  useEffect(() => {
-    if (!aviso) return
-    const id = setTimeout(() => setAviso(null), DURACAO_AVISO_MS)
-    return () => clearTimeout(id)
-  }, [aviso])
 
   // Pedido novo: destaca o cartão, anuncia ao leitor de tela e bipa (se o som estiver ligado).
   useEffect(() => {
@@ -125,6 +118,7 @@ export default function PedidosPage() {
     }
   }
 
+  const limparAviso = useCallback(() => setAviso(null), [])
   const pedidoEditando = pedidos.find(p => p.id === editando) ?? null
   // Pedidos que pedem atenção aparecem primeiro na coluna
   const ordenar = (lista: PedidoCozinha[]) =>
@@ -138,11 +132,7 @@ export default function PedidosPage() {
         {anuncio}
       </p>
 
-      {travado && (
-        <p role="alert" className="mb-4 rounded-xl bg-perigo px-4 py-3 text-base font-semibold text-white">
-          Sem conexão: os pedidos podem estar desatualizados. Reconectando…
-        </p>
-      )}
+      {travado && <FaixaSemConexao assunto="os pedidos" />}
 
       <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
         {!travado && (
@@ -161,16 +151,7 @@ export default function PedidosPage() {
         </button>
       </div>
 
-      {aviso && (
-        <p
-          role={aviso.tipo === 'erro' ? 'alert' : 'status'}
-          className={`fixed inset-x-4 bottom-4 z-30 mx-auto max-w-lg rounded-xl px-4 py-3 text-sm font-medium shadow-lg ${
-            aviso.tipo === 'erro' ? 'bg-perigo-clara text-perigo' : 'bg-sucesso-clara text-sucesso'
-          }`}
-        >
-          {aviso.texto}
-        </p>
-      )}
+      <AvisoFlutuante aviso={aviso} aoSumir={limparAviso} />
       {erro && (
         <p role="alert" className="mb-4 rounded-xl bg-perigo-clara px-4 py-3 text-sm text-perigo">
           {erro}

@@ -287,7 +287,7 @@ Aberta → AguardandoPagamento → Paga → Fechada
 
 - `Aberta`: aceita novos pedidos.
 - `AguardandoPagamento`: cliente tocou "já paguei". Não aceita novos pedidos. O caixa pode devolver pra `Aberta` se o cliente quiser pedir mais.
-- `Paga`: caixa conferiu o extrato e tocou "marcar como pago".
+- `Paga`: caixa conferiu o extrato e tocou "marcar como pago". Também pode ir direto de `Aberta` (com valor) quando o cliente pagou o Pix e esqueceu de tocar "já paguei" (decisão 23); a RLS continua impedindo o próprio cliente de marcar como paga.
 - `Fechada`: garçom tocou "fechar mesa". Nesse momento todos os pedidos `Entregue` viram `Finalizado`. Encerra as `sessoes_mesa` daquela comanda.
 - **Só pode fechar** se a comanda estiver `Paga` E nenhum pedido estiver em `Recebido`, `Preparando`, `Pronto`, `EdicaoSolicitada` ou `CancelamentoPendente`. Regra em `src/domain/comanda/estado.ts` (`podeFecharComanda`).
 - Comanda com todos os pedidos cancelados (total zero) pode ir direto de `Aberta` pra `Fechada`.
@@ -1107,6 +1107,7 @@ Decisões **confirmadas pelo dono do produto em 2026-11-09**:
 | 20 | (2026-11-12) Pagamento com pedidos pendentes: só avisar o cliente (não bloqueia); depois do "já paguei" o cliente não edita/cancela/chama garçom; o auto-cancelamento ignora contas fora de `Aberta` | 9, 12 |
 | 21 | (2026-11-12) Fase 3 da revisão: rotinas automáticas (§6.11) rodam em QUALQUER tela da equipe (`LayoutEquipe`), não só em Pedidos/Contas; mesa com conta aberta não pode ser desativada; a Edge Function `equipe` ganhou `reativar` e `mudarPapel` (gerente não rebaixa a si mesmo nem o último gerente); aparelho com login da equipe que abre `/mesa/N` vê um aviso em vez de virar cliente; carrinho é limpo quando a mesa fecha | 9, 13, 14 |
 | 22 | (2026-11-12) Revisão de design (item 15): `itens_cardapio.descricao` opcional (até 200), observação enviada dentro da janela do pedido, e o cliente lê as `sessoes_mesa` da PRÓPRIA comanda (nova política de SELECT) para mostrar quem pediu cada pedido ("Seu pedido" / "Pedido de Ana") | 6, 15 |
+| 23 | (2026-11-12) O caixa pode marcar como paga uma conta `Aberta` com valor ("Recebi o Pix"), com a mesma confirmação de mesa e valor; `podeMarcarComoPaga` em `domain/comanda/estado.ts` | 12 |
 
 Ainda em aberto: nenhuma no momento. A escolha entre Backblaze B2 e S3 pro backup é feita no item 16.
 

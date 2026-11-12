@@ -1,9 +1,11 @@
 import { supabase } from './supabase'
 import * as auditoriaRepo from './auditoriaRepo'
 import { criarEvento, type Ator } from '@/domain/auditoria/evento'
+import { rotuloEstado } from '@/domain/auditoria/rotulos'
 import {
   motivoNaoPodeFechar,
   podeInformarPagamento,
+  podeMarcarComoPaga,
   transicaoComandaValida,
   type EstadoComanda,
   type MotivoNaoFecha,
@@ -241,7 +243,7 @@ async function lerComandaComPedidos(comandaId: string) {
 /** Muda o estado da comanda com UPDATE condicional e registra o evento. Devolve false se outro mudou antes. */
 async function mudarEstado(comanda: Comanda, para: EstadoComanda, ator: Ator, extra: Record<string, string> = {}): Promise<boolean> {
   if (!transicaoComandaValida(comanda.estado, para)) {
-    throw new ErroComanda(`Não é possível ir de ${comanda.estado} para ${para}.`)
+    throw new ErroComanda(`Esta conta já mudou (agora: ${rotuloEstado(comanda.estado).toLowerCase()}). Atualize a tela.`)
   }
   const { data, error } = await supabase
     .from('comandas')
@@ -263,7 +265,7 @@ async function mudarEstado(comanda: Comanda, para: EstadoComanda, ator: Ator, ex
 
 async function mudarOuFalhar(comanda: Comanda, para: EstadoComanda): Promise<void> {
   const ok = await mudarEstado(comanda, para, await auditoriaRepo.atorDaSessao())
-  if (!ok) throw new ErroComanda('A conta foi alterada por outra pessoa. Recarregue.')
+  if (!ok) throw new ErroComanda('A conta foi alterada por outra pessoa. Atualize a tela.')
 }
 
 /** Cliente toca "já paguei": Aberta → AguardandoPagamento (para de aceitar pedidos). */
@@ -273,9 +275,15 @@ export async function informarPagamento(comandaId: string): Promise<void> {
   await mudarOuFalhar(comanda, 'AguardandoPagamento')
 }
 
-/** Caixa conferiu o extrato: AguardandoPagamento → Paga. */
+/**
+ * Caixa conferiu o extrato: AguardandoPagamento → Paga, ou direto de Aberta
+ * quando o cliente pagou e esqueceu de tocar "já paguei" (decisão 23).
+ */
 export async function marcarComoPaga(comandaId: string): Promise<void> {
-  const { comanda } = await lerComandaComPedidos(comandaId)
+  const { comanda, pedidos } = await lerComandaComPedidos(comandaId)
+  if (!podeMarcarComoPaga(comanda.estado, pedidos)) {
+    throw new ErroComanda(comanda.estado === 'Aberta' ? 'Esta conta não tem valor a pagar.' : 'Esta conta já mudou. Atualize a tela.')
+  }
   await mudarOuFalhar(comanda, 'Paga')
 }
 

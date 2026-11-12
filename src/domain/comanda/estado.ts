@@ -7,7 +7,9 @@ export type EstadoComanda = 'Aberta' | 'AguardandoPagamento' | 'Paga' | 'Fechada
 export const ESTADOS_COMANDA: readonly EstadoComanda[] = ['Aberta', 'AguardandoPagamento', 'Paga', 'Fechada']
 
 const TRANSICOES: Record<EstadoComanda, readonly EstadoComanda[]> = {
-  Aberta: ['AguardandoPagamento', 'Fechada'], // Fechada só com total zero (podeFecharComanda)
+  // Fechada só com total zero (podeFecharComanda). Paga direto: o caixa achou o Pix
+  // de quem esqueceu de tocar "já paguei" (decisão 23).
+  Aberta: ['AguardandoPagamento', 'Paga', 'Fechada'],
   AguardandoPagamento: ['Aberta', 'Paga'], // caixa reabre ou confirma
   Paga: ['Fechada'],
   Fechada: [],
@@ -24,6 +26,15 @@ export function aceitaNovosPedidos(estado: EstadoComanda): boolean {
 
 /** Cliente pode tocar "já paguei": comanda Aberta com valor a pagar. */
 export function podeInformarPagamento(estado: EstadoComanda, pedidos: readonly PedidoCalculo[]): boolean {
+  return estado === 'Aberta' && totalComanda(pedidos) > 0
+}
+
+/**
+ * O caixa pode marcar como paga: depois do "já paguei", ou direto de uma conta
+ * Aberta com valor (cliente pagou o Pix e esqueceu de avisar, decisão 23).
+ */
+export function podeMarcarComoPaga(estado: EstadoComanda, pedidos: readonly PedidoCalculo[]): boolean {
+  if (estado === 'AguardandoPagamento') return true
   return estado === 'Aberta' && totalComanda(pedidos) > 0
 }
 

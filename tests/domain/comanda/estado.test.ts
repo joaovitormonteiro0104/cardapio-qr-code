@@ -4,6 +4,7 @@ import {
   motivoNaoPodeFechar,
   podeFecharComanda,
   podeInformarPagamento,
+  podeMarcarComoPaga,
   transicaoComandaValida,
   type EstadoComanda,
 } from '@/domain/comanda/estado'
@@ -33,7 +34,7 @@ describe('transicaoComandaValida', () => {
     ['AguardandoPagamento', 'Paga', true],
     ['Paga', 'Fechada', true],
     ['Aberta', 'Fechada', true],
-    ['Aberta', 'Paga', false],
+    ['Aberta', 'Paga', true],
     ['Paga', 'Aberta', false],
     ['AguardandoPagamento', 'Fechada', false],
     ['Fechada', 'Aberta', false],
@@ -81,5 +82,20 @@ describe('podeFecharComanda / motivoNaoPodeFechar', () => {
 
   it('Fechada não fecha de novo', () => {
     expect(motivoNaoPodeFechar('Fechada', [])).toBe('ja_fechada')
+  })
+})
+
+describe('podeMarcarComoPaga (decisão 23)', () => {
+  const comValor = [{ estado: 'Entregue' as const, itens: [{ quantidade: 1, precoCentavosSnapshot: 1000, removidoEm: null }] }]
+  it('depois do "já paguei" sempre pode', () => {
+    expect(podeMarcarComoPaga('AguardandoPagamento', comValor)).toBe(true)
+  })
+  it('conta aberta com valor: caixa achou o Pix', () => {
+    expect(podeMarcarComoPaga('Aberta', comValor)).toBe(true)
+  })
+  it('conta aberta sem valor ou já paga: não', () => {
+    expect(podeMarcarComoPaga('Aberta', [])).toBe(false)
+    expect(podeMarcarComoPaga('Paga', comValor)).toBe(false)
+    expect(podeMarcarComoPaga('Fechada', comValor)).toBe(false)
   })
 })
