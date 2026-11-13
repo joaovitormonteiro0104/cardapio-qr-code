@@ -1,7 +1,8 @@
 import { useEffect, useId, useState, type FormEvent } from 'react'
 import { Modal } from '@/components/Modal'
 import { centavosParaCampo, parseReal } from '@/domain/cardapio/formatacao'
-import { DESCRICAO_ITEM_MAX, FOTO_TIPOS_ACEITOS, nomeItemValido, precoValido, problemaFoto } from '@/domain/cardapio/validacao'
+import { DESCRICAO_ITEM_MAX, nomeItemValido, precoValido, problemaFoto } from '@/domain/cardapio/validacao'
+import { reduzirFoto } from '@/lib/reduzirFoto'
 import { ItemFormSchema, type Categoria, type ItemCardapio, type ItemForm } from '@/schemas/cardapio'
 import { ErroFoto, uploadFotoItem } from '@/repositories/storageRepo'
 
@@ -13,18 +14,20 @@ interface Props {
   categorias: Categoria[]
   aoFechar: () => void
   aoSalvar: (form: ItemForm) => Promise<void>
+  /** Item existente e ativo: mostra "Excluir item" no fim da janela (longe da lista). */
+  aoExcluir?: (item: ItemCardapio) => void
 }
 
 const MENSAGEM_FOTO = {
-  tipo: 'Use uma foto JPG, PNG ou WebP.',
-  tamanho: 'A foto pode ter no máximo 2 MB.',
+  tipo: 'Não foi possível abrir esta imagem. Tente outra foto (JPG, PNG ou WebP).',
+  tamanho: 'Esta foto continua grande demais mesmo reduzida. Tente outra.',
   envio: 'Não foi possível enviar a foto. Tente de novo.',
 } as const
 
 /** Erro de cada campo, mostrado embaixo dele. `geral` = falha ao salvar. */
 type Erros = Partial<Record<'nome' | 'preco' | 'categoria' | 'foto' | 'geral', string>>
 
-export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFechar, aoSalvar }: Props) {
+export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFechar, aoSalvar, aoExcluir }: Props) {
   const ids = useId()
   const [nome, setNome] = useState('')
   const [descricao, setDescricao] = useState('')
@@ -36,18 +39,35 @@ export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFe
   const [previa, setPrevia] = useState<string | null>(null)
   const [erros, setErros] = useState<Erros>({})
   const [salvando, setSalvando] = useState(false)
+  const [preparandoFoto, setPreparandoFoto] = useState(false)
+  const [confirmandoDescarte, setConfirmandoDescarte] = useState(false)
+  const [inicial, setInicial] = useState('')
 
   useEffect(() => {
     if (!aberto) return
     setNome(item?.nome ?? '')
     setDescricao(item?.descricao ?? '')
     setPreco(item ? centavosParaCampo(item.precoCentavos) : '')
-    setCategoriaId(item?.categoriaId ?? categoriaInicial ?? categorias[0]?.id ?? '')
+    // Item novo pelo botão geral começa sem categoria: o gerente escolhe (não cai em "Lanches" sem perceber).
+    const categoria = item?.categoriaId ?? categoriaInicial ?? ''
+    setCategoriaId(categoria)
     setDisponivel(item?.disponivel ?? true)
     setFotoUrl(item?.fotoUrl ?? null)
     setArquivo(null)
     setErros({})
+    setConfirmandoDescarte(false)
+    setInicial(
+      JSON.stringify([item?.nome ?? '', item?.descricao ?? '', item ? centavosParaCampo(item.precoCentavos) : '', categoria, item?.disponivel ?? true, item?.fotoUrl ?? null]),
+    )
   }, [aberto, item, categoriaInicial, categorias])
+
+  const alterado = JSON.stringify([nome, descricao, preco, categoriaId, disponivel, fotoUrl]) !== inicial || arquivo !== null
+
+  /** Fechar (Esc, fundo, ×, Cancelar) com alterações pede confirmação. */
+  function pedirFechar() {
+    if (alterado && !salvando) setConfirmandoDescarte(true)
+    else aoFechar()
+  }
 
   // prévia local da foto escolhida (antes do upload)
   useEffect(() => {
@@ -60,16 +80,26 @@ export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFe
     return () => URL.revokeObjectURL(url)
   }, [arquivo])
 
-  function escolherArquivo(lista: FileList | null) {
+  // Qualquer foto do celular serve: ela é reduzida aqui antes de validar e enviar.
+  async function escolherArquivo(lista: FileList | null) {
     const escolhido = lista?.[0] ?? null
     if (!escolhido) return
-    const problema = problemaFoto(escolhido.type, escolhido.size)
-    if (problema) {
-      setErros(e => ({ ...e, foto: MENSAGEM_FOTO[problema] }))
-      return
+    setPreparandoFoto(true)
+    try {
+      const reduzida = await reduzirFoto(escolhido)
+      const problema = problemaFoto(reduzida.type, reduzida.size)
+      if (problema) {
+        setErros(e => ({ ...e, foto: MENSAGEM_FOTO[problema] }))
+        return
+      }
+      setErros(e => ({ ...e, foto: undefined }))
+      setArquivo(reduzida)
+    } catch (falha) {
+      console.error(falha)
+      setErros(e => ({ ...e, foto: MENSAGEM_FOTO.tipo }))
+    } finally {
+      setPreparandoFoto(false)
     }
-    setErros(e => ({ ...e, foto: undefined }))
-    setArquivo(escolhido)
   }
 
   async function enviar(evento: FormEvent<HTMLFormElement>) {
@@ -118,18 +148,34 @@ export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFe
     <Modal
       aberto={aberto}
       titulo={item ? 'Editar item' : 'Novo item'}
-      aoFechar={aoFechar}
+      aoFechar={pedirFechar}
       acoes={
+        confirmandoDescarte ? (
+          <>
+            <button type="button" className="botao-secundario" onClick={() => setConfirmandoDescarte(false)}>
+              Continuar editando
+            </button>
+            <button type="button" className="botao-perigo" onClick={aoFechar}>
+              Descartar alterações
+            </button>
+          </>
+        ) : (
         <>
-          <button type="button" className="botao-secundario" onClick={aoFechar}>
+          <button type="button" className="botao-secundario" onClick={pedirFechar}>
             Cancelar
           </button>
-          <button type="submit" form={idForm} className="botao-primario" disabled={salvando}>
+          <button type="submit" form={idForm} className="botao-primario" disabled={salvando || preparandoFoto}>
             {salvando ? 'Salvando…' : 'Salvar'}
           </button>
         </>
+        )
       }
     >
+      {confirmandoDescarte && (
+        <p role="alert" className="mb-4 rounded-xl border border-perigo/40 bg-perigo-clara px-4 py-3 text-sm font-medium text-perigo">
+          Você mudou este item e ainda não salvou. Descartar as alterações?
+        </p>
+      )}
       <form id={idForm} onSubmit={enviar} noValidate className="space-y-4">
         <div>
           <label htmlFor={`${ids}-nome`} className="rotulo">
@@ -146,7 +192,7 @@ export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFe
             aria-describedby={erros.nome ? `${ids}-nome-erro` : undefined}
           />
           <ErroCampo id={`${ids}-nome-erro`} texto={erros.nome} />
-          <p className="mt-1 text-xs text-tinta-suave">Tamanhos diferentes são itens separados (ex.: “X-Burguer grande”).</p>
+          <p className="mt-1 text-sm text-tinta-suave">Tamanhos diferentes são itens separados (ex.: “X-Burguer grande”).</p>
         </div>
 
         <div>
@@ -161,7 +207,7 @@ export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFe
             placeholder="Ex.: pão brioche, hambúrguer 150 g, cheddar e bacon"
             onChange={e => setDescricao(e.target.value)}
           />
-          <p className="mt-1 text-xs tabular-nums text-tinta-suave">
+          <p className="mt-1 text-sm tabular-nums text-tinta-suave">
             O que vem no item ou quanto serve. {descricao.length}/{DESCRICAO_ITEM_MAX}
           </p>
         </div>
@@ -197,10 +243,13 @@ export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFe
               aria-invalid={erros.categoria ? true : undefined}
               aria-describedby={erros.categoria ? `${ids}-categoria-erro` : undefined}
             >
+              <option value="" disabled>
+                Escolha…
+              </option>
               {categorias.map(categoria => (
                 <option key={categoria.id} value={categoria.id}>
                   {categoria.nome}
-                  {categoria.ativa ? '' : ' (inativa)'}
+                  {categoria.ativa ? '' : ' (desativada)'}
                 </option>
               ))}
             </select>
@@ -215,23 +264,27 @@ export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFe
             checked={disponivel}
             onChange={e => setDisponivel(e.target.checked)}
           />
-          <span>Disponível (desmarque se estiver esgotado)</span>
+          <span>Disponível para pedir agora</span>
         </label>
 
         <div>
-          <span className="rotulo">Foto (opcional)</span>
+          <span id={`${ids}-foto-rotulo`} className="rotulo">
+            Foto (opcional)
+          </span>
           <div className="flex items-center gap-3">
-            <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-borda bg-fundo text-xs text-tinta-suave">
+            <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-borda bg-fundo text-sm text-tinta-suave">
               {imagem ? <img src={imagem} alt="" className="size-full object-cover" /> : 'Sem foto'}
             </div>
             <div className="flex flex-wrap gap-2">
-              <label className="botao-secundario cursor-pointer text-sm">
-                {imagem ? 'Trocar foto' : 'Escolher foto'}
+              <label className="botao-secundario cursor-pointer text-sm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brasa">
+                {preparandoFoto ? 'Preparando foto…' : imagem ? 'Trocar foto' : 'Escolher foto'}
                 <input
                   type="file"
-                  accept={FOTO_TIPOS_ACEITOS.join(',')}
+                  accept="image/*"
                   className="sr-only"
-                  onChange={e => escolherArquivo(e.target.files)}
+                  disabled={preparandoFoto}
+                  aria-describedby={erros.foto ? `${ids}-foto-erro` : `${ids}-foto-ajuda`}
+                  onChange={e => void escolherArquivo(e.target.files)}
                 />
               </label>
               {imagem && (
@@ -249,8 +302,18 @@ export function ItemFormModal({ aberto, item, categoriaInicial, categorias, aoFe
             </div>
           </div>
           <ErroCampo id={`${ids}-foto-erro`} texto={erros.foto} />
-          <p className="mt-1 text-xs text-tinta-suave">JPG, PNG ou WebP, até 2 MB.</p>
+          <p id={`${ids}-foto-ajuda`} className="mt-1 text-sm text-tinta-suave">
+            Qualquer foto do celular serve: ela é reduzida antes de enviar.
+          </p>
         </div>
+
+        {item && item.ativo && aoExcluir && (
+          <div className="border-t border-borda pt-4">
+            <button type="button" className="botao-secundario w-full text-perigo" onClick={() => aoExcluir(item)}>
+              Excluir item do cardápio
+            </button>
+          </div>
+        )}
 
         {erros.geral && (
           <p role="alert" className="text-sm font-medium text-perigo">
