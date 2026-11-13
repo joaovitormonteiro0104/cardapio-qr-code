@@ -1119,6 +1119,10 @@ Ainda em aberto: nenhuma no momento. A escolha entre Backblaze B2 e S3 pro backu
 
 ## 16. Histórico de revisões deste arquivo
 
+**Revisão 6 (2026-11-13)** — item 15 (polimento) concluído em código:
+- Critique Impeccable nas 11 telas (relatórios em `.impeccable/critique/`), correções aplicadas; scanner final sem achados no código e nas telas públicas.
+- §6.4, §6.9, §6.10 e §15: decisões 22–25.
+
 **Revisão 5 (2026-11-12)** — revisão de segurança:
 - §7: endurecimento da RLS e teste `rls_abusos.sql`.
 - §15: decisões 19, 20 e 21; §6.5 e §6.8 atualizadas (regras de pagamento).

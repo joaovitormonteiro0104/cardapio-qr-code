@@ -283,9 +283,10 @@ export default function AuditoriaPage() {
               const resumo = resumirEvento(evento.tipoEvento, evento.payload)
               const sensivel = eventoSensivel(evento.tipoEvento)
               return (
-                <tr key={evento.id} className={`align-top ${sensivel ? 'border-l-4 border-l-perigo' : ''}`}>
+                <tr key={evento.id} className="align-top">
                   <td className="whitespace-nowrap px-3 py-2 tabular-nums">{formatarDataHora(evento.criadoEm)}</td>
-                  <td className="px-3 py-2 font-medium">
+                  <td className={`px-3 py-2 font-medium ${sensivel ? 'text-perigo' : ''}`}>
+                    {sensivel && <span aria-hidden className="mr-1.5 inline-block size-2 rounded-full bg-perigo align-middle" />}
                     {rotuloTipoEvento(evento.tipoEvento)}
                     <IdentificadoresEvento conta={resumo.conta} pedido={resumo.pedido} />
                   </td>
@@ -364,9 +365,12 @@ function CartaoEvento({ evento, nomes }: { evento: EventoAuditoria; nomes: Reado
   const resumo = resumirEvento(evento.tipoEvento, evento.payload)
   const motivo = rotuloMotivo(evento.motivo)
   return (
-    <li className={`rounded-xl bg-superficie p-3 ring-1 ring-borda ${eventoSensivel(evento.tipoEvento) ? 'border-l-4 border-l-perigo' : ''}`}>
+    <li className="rounded-xl bg-superficie p-3 ring-1 ring-borda">
       <div className="flex items-baseline justify-between gap-2">
-        <p className="font-semibold">{rotuloTipoEvento(evento.tipoEvento)}</p>
+        <p className={`font-semibold ${eventoSensivel(evento.tipoEvento) ? 'text-perigo' : ''}`}>
+          {eventoSensivel(evento.tipoEvento) && <span aria-hidden className="mr-1.5 inline-block size-2 rounded-full bg-perigo align-middle" />}
+          {rotuloTipoEvento(evento.tipoEvento)}
+        </p>
         <p className="shrink-0 text-sm tabular-nums text-tinta-suave">{formatarDataHora(evento.criadoEm)}</p>
       </div>
       <p className="text-sm tabular-nums text-tinta-suave">
