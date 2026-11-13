@@ -19,6 +19,13 @@ export async function listarMesas(): Promise<Mesa[]> {
   return data.map(linha => MesaSchema.parse(linha))
 }
 
+/** Conta não fechada de cada mesa (mesaId → número da conta). A RLS deixa a equipe ler todas. */
+export async function contasAbertasPorMesa(): Promise<Map<string, number>> {
+  const { data, error } = await supabase.from('comandas').select('mesa_id, numero').neq('estado', 'Fechada')
+  if (error) throw new Error(`contasAbertasPorMesa: ${error.message}`)
+  return new Map((data as { mesa_id: string; numero: number }[]).map(c => [c.mesa_id, c.numero]))
+}
+
 export class MesaDuplicadaError extends Error {
   constructor(numero: number) {
     super(`Já existe a mesa ${numero}`)

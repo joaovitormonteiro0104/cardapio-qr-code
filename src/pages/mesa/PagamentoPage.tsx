@@ -256,7 +256,12 @@ function BlocoCodigo({ payload, total }: { payload: string; total: number }) {
   return (
     <>
       <div className="mx-auto w-fit rounded-2xl bg-white p-3 ring-1 ring-borda">
-        <QrCode texto={payload} descricao={`QR Code Pix de ${formatarReal(total)}`} tamanho={220} />
+        <QrCode
+          texto={payload}
+          descricao={`QR Code Pix de ${formatarReal(total)}`}
+          tamanho={220}
+          textoFalha="Não foi possível desenhar o QR Code. Use o código copia e cola."
+        />
       </div>
       <div>
         <label htmlFor="pix-copia" className="rotulo">

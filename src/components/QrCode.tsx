@@ -7,10 +7,12 @@ interface Props {
   descricao: string
   tamanho?: number
   className?: string
+  /** Texto se o QR não puder ser desenhado. */
+  textoFalha?: string
 }
 
 /** Desenha um QR Code (lib `qrcode`, decisão 16 de AGENTS.md §15) como imagem PNG. */
-export function QrCode({ texto, descricao, tamanho = 240, className = '' }: Props) {
+export function QrCode({ texto, descricao, tamanho = 240, className = '', textoFalha = 'Não foi possível desenhar o QR Code.' }: Props) {
   const [url, setUrl] = useState<string | null>(null)
   const [falhou, setFalhou] = useState(false)
 
@@ -37,7 +39,7 @@ export function QrCode({ texto, descricao, tamanho = 240, className = '' }: Prop
         style={{ width: tamanho, height: tamanho }}
         className={`flex items-center justify-center rounded-lg bg-fundo p-4 text-center text-sm text-tinta-suave ${className}`}
       >
-        Não foi possível desenhar o QR Code. Use o código copia e cola.
+        {textoFalha}
       </div>
     )
   }
