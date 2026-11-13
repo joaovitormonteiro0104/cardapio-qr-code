@@ -9,7 +9,7 @@
 //   { acao: 'criar', matricula, nome, papel, pin }
 //   { acao: 'trocarPin', funcionarioId, pin }
 //   { acao: 'desativar', funcionarioId }
-//   { acao: 'reativar', funcionarioId }
+//   { acao: 'reativar', funcionarioId, pin }   (reativar sempre define PIN novo)
 //   { acao: 'mudarPapel', funcionarioId, papel }
 // Só gerente ATIVO pode chamar (senão 403).
 
@@ -21,6 +21,7 @@ import {
   motivoNaoPodeDesativar,
   motivoNaoPodeMudarPapel,
 } from '../../../src/domain/equipe/regras.ts'
+import { matriculaEquivalente } from '../../../src/domain/equipe/matricula.ts'
 
 // --- Schemas -----------------------------------------------------------------
 // Duplicados de src/schemas/auth.ts (o bundler da função não resolve o
@@ -41,7 +42,7 @@ const CorpoSchema = z.discriminatedUnion('acao', [
   }),
   z.object({ acao: z.literal('trocarPin'), funcionarioId: z.uuid(), pin: PinSchema }),
   z.object({ acao: z.literal('desativar'), funcionarioId: z.uuid() }),
-  z.object({ acao: z.literal('reativar'), funcionarioId: z.uuid() }),
+  z.object({ acao: z.literal('reativar'), funcionarioId: z.uuid(), pin: PinSchema }),
   z.object({ acao: z.literal('mudarPapel'), funcionarioId: z.uuid(), papel: PapelSchema }),
 ])
 
@@ -102,8 +103,14 @@ Deno.serve(async req => {
   }
 
   if (dados.acao === 'criar') {
-    const { data: existente } = await admin.from('funcionarios').select('id').eq('matricula', dados.matricula).maybeSingle()
-    if (existente) return resposta(409, { erro: `A matrícula ${dados.matricula} já existe.` })
+    // "1" e "001" são a mesma pessoa no login: recusa matrícula equivalente.
+    const { data: todas } = await admin.from('funcionarios').select('matricula')
+    const igual = matriculaEquivalente(dados.matricula, (todas ?? []).map(f => f.matricula as string))
+    if (igual) {
+      return resposta(409, {
+        erro: igual === dados.matricula ? `A matrícula ${igual} já existe.` : `A matrícula ${dados.matricula} é igual à ${igual}, que já existe.`,
+      })
+    }
 
     const { data: criado, error: erroCriar } = await admin.auth.admin.createUser({
       email: `${dados.matricula}@${DOMINIO_EMAIL_SINTETICO}`,
@@ -148,7 +155,8 @@ Deno.serve(async req => {
 
   if (dados.acao === 'reativar') {
     if (alvo.ativo) return resposta(409, { erro: 'Este funcionário já está ativo.' })
-    const { error: erroDesbanir } = await admin.auth.admin.updateUserById(alvo.usuario_id, { ban_duration: 'none' })
+    // Volta sempre com PIN novo: quem ficou fora não reaproveita o antigo.
+    const { error: erroDesbanir } = await admin.auth.admin.updateUserById(alvo.usuario_id, { ban_duration: 'none', password: dados.pin })
     if (erroDesbanir) return resposta(500, { erro: 'Não foi possível devolver o acesso.' })
     const { error } = await admin.from('funcionarios').update({ ativo: true }).eq('id', alvo.id)
     if (error) return resposta(500, { erro: 'Não foi possível reativar.' })

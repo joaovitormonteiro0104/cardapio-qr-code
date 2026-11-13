@@ -68,9 +68,9 @@ export async function desativar(funcionarioId: string): Promise<void> {
   await chamar({ acao: 'desativar', funcionarioId })
 }
 
-/** Devolve o acesso (o PIN continua o mesmo de antes). */
-export async function reativar(funcionarioId: string): Promise<void> {
-  await chamar({ acao: 'reativar', funcionarioId })
+/** Devolve o acesso com um PIN NOVO (o antigo deixa de valer). */
+export async function reativar(funcionarioId: string, pin: string): Promise<void> {
+  await chamar({ acao: 'reativar', funcionarioId, pin: PinSchema.parse(pin) })
 }
 
 export async function mudarPapel(funcionarioId: string, papel: Papel): Promise<void> {

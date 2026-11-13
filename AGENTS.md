@@ -342,7 +342,8 @@ Aberta → AguardandoPagamento → Paga → Fechada
 - **Criar funcionário e trocar PIN** exigem a `service_role` key, que NUNCA vai pro frontend. Por isso existe uma Edge Function `equipe` (única do MVP) que: confere se quem chama é `gerencia`, e cria o usuário/troca a senha via Admin API. A lógica de validação (formato da matrícula, PIN) é importada de `src/schemas/auth.ts` sempre que possível; se o bundler não permitir, duplique só o schema Zod e comente a origem.
 - **Primeiro gerente** (bootstrap, uma vez só): criar o usuário `001@restaurante.local` em Authentication → Users → "Add user" no dashboard (com "Auto confirm"), e então rodar o SQL documentado no README que insere a linha em `funcionarios` com `papel = 'gerencia'`. É criação de DADO, não de schema, por isso é permitido.
 - **Garçom responsável pela mesa**: NÃO é registrado no pedido.
-- PIN é trocável pela gerência em `/gerencia/equipe`. Desativar funcionário seta `ativo = false` (a RLS passa a negar tudo pra ele).
+- PIN é trocável pela gerência em `/gerencia/equipe`. Desativar funcionário seta `ativo = false` (a RLS passa a negar tudo pra ele). Reativar SEMPRE define um PIN novo (decisão 24).
+- Matrículas equivalentes ("1" e "001") não podem coexistir: o login aceita as duas formas (`variantesMatricula`), então o cadastro recusa a equivalente (`matriculaEquivalente`, na tela e na Edge Function).
 
 ### 6.10 Auditoria e log
 
@@ -1108,6 +1109,7 @@ Decisões **confirmadas pelo dono do produto em 2026-11-09**:
 | 21 | (2026-11-12) Fase 3 da revisão: rotinas automáticas (§6.11) rodam em QUALQUER tela da equipe (`LayoutEquipe`), não só em Pedidos/Contas; mesa com conta aberta não pode ser desativada; a Edge Function `equipe` ganhou `reativar` e `mudarPapel` (gerente não rebaixa a si mesmo nem o último gerente); aparelho com login da equipe que abre `/mesa/N` vê um aviso em vez de virar cliente; carrinho é limpo quando a mesa fecha | 9, 13, 14 |
 | 22 | (2026-11-12) Revisão de design (item 15): `itens_cardapio.descricao` opcional (até 200), observação enviada dentro da janela do pedido, e o cliente lê as `sessoes_mesa` da PRÓPRIA comanda (nova política de SELECT) para mostrar quem pediu cada pedido ("Seu pedido" / "Pedido de Ana") | 6, 15 |
 | 23 | (2026-11-12) O caixa pode marcar como paga uma conta `Aberta` com valor ("Recebi o Pix"), com a mesma confirmação de mesa e valor; `podeMarcarComoPaga` em `domain/comanda/estado.ts` | 12 |
+| 24 | (2026-11-13) Equipe: reativar exige PIN novo; cadastro recusa matrícula equivalente ("1" × "001"); PIN visível com "Gerar PIN" e mostrado uma vez, grande, depois de salvar | 14 |
 
 Ainda em aberto: nenhuma no momento. A escolha entre Backblaze B2 e S3 pro backup é feita no item 16.
 

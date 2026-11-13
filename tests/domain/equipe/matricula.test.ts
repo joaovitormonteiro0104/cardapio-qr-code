@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { variantesMatricula } from '@/domain/equipe/matricula'
+import { matriculaEquivalente, proximaMatriculaLivre, variantesMatricula } from '@/domain/equipe/matricula'
 
 describe('variantesMatricula', () => {
   it('"1" tenta também "001"', () => {
@@ -25,5 +25,23 @@ describe('variantesMatricula', () => {
   it('texto inválido não gera tentativa', () => {
     expect(variantesMatricula('')).toEqual([])
     expect(variantesMatricula('12a')).toEqual([])
+  })
+})
+
+describe('matriculaEquivalente', () => {
+  it('"1" equivale a "001" já cadastrada', () => {
+    expect(matriculaEquivalente('1', ['001', '002'])).toBe('001')
+    expect(matriculaEquivalente('0002', ['001', '2'])).toBe('2')
+  })
+  it('matrícula nova sem equivalente', () => {
+    expect(matriculaEquivalente('10', ['001', '100'])).toBeNull()
+  })
+})
+
+describe('proximaMatriculaLivre', () => {
+  it('segue a maior, com 3 dígitos', () => {
+    expect(proximaMatriculaLivre(['001', '003'])).toBe('004')
+    expect(proximaMatriculaLivre([])).toBe('001')
+    expect(proximaMatriculaLivre(['1234'])).toBe('1235')
   })
 })
