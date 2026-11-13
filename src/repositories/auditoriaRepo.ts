@@ -48,12 +48,18 @@ export interface FiltrosAuditoria {
   ate: Date
   tipoEvento?: string | null
   atorId?: string | null
+  /** Só um tipo de ator (ex.: todos os clientes, ou o sistema). */
+  atorTipo?: 'cliente' | 'funcionario' | 'sistema' | null
+  /** Mesa gravada no evento (eventos a partir de 13/11/2026). */
+  mesa?: number | null
+  /** Número da conta ou do pedido. */
+  numero?: number | null
   /** começa em 0 */
   pagina: number
 }
 
 export const TAMANHO_PAGINA = 50
-const LIMITE_EXPORTACAO = 50_000
+export const LIMITE_EXPORTACAO = 50_000
 const COLUNAS = 'id, criado_em, tipo_evento, ator_tipo, ator_id, comanda_id, pedido_id, motivo, payload'
 
 function base(contar: boolean) {
@@ -64,6 +70,9 @@ function aplicarFiltros(consulta: ReturnType<typeof base>, f: Omit<FiltrosAudito
   let q = consulta.gte('criado_em', f.desde.toISOString()).lt('criado_em', f.ate.toISOString())
   if (f.tipoEvento) q = q.eq('tipo_evento', f.tipoEvento)
   if (f.atorId) q = q.eq('ator_id', f.atorId.trim())
+  if (f.atorTipo) q = q.eq('ator_tipo', f.atorTipo)
+  if (f.mesa) q = q.eq('payload->>mesa', String(f.mesa))
+  if (f.numero) q = q.or(`payload->>numero.eq.${f.numero},payload->>conta.eq.${f.numero}`)
   return q
 }
 
@@ -77,8 +86,14 @@ export async function listar(f: FiltrosAuditoria): Promise<{ eventos: EventoAudi
   return { eventos: (data as LinhaEvento[]).map(paraEvento), total: count ?? 0 }
 }
 
-/** Todos os eventos do período (em lotes de 1000), mais antigos primeiro, para o CSV. */
-export async function listarParaExportacao(f: Omit<FiltrosAuditoria, 'pagina'>): Promise<EventoAuditoria[]> {
+/**
+ * Todos os eventos do período (em lotes de 1000), mais antigos primeiro, para o CSV.
+ * `aoProgredir` recebe quantos já vieram; `cortado` avisa se passou do limite.
+ */
+export async function listarParaExportacao(
+  f: Omit<FiltrosAuditoria, 'pagina'>,
+  aoProgredir?: (quantos: number) => void,
+): Promise<{ eventos: EventoAuditoria[]; cortado: boolean }> {
   const todos: EventoAuditoria[] = []
   const lote = 1000
   for (let inicio = 0; inicio < LIMITE_EXPORTACAO; inicio += lote) {
@@ -89,9 +104,10 @@ export async function listarParaExportacao(f: Omit<FiltrosAuditoria, 'pagina'>):
     if (error) throw new Error(`auditoria.exportar: ${error.message}`)
     const linhas = data as LinhaEvento[]
     todos.push(...linhas.map(paraEvento))
-    if (linhas.length < lote) break
+    aoProgredir?.(todos.length)
+    if (linhas.length < lote) return { eventos: todos, cortado: false }
   }
-  return todos
+  return { eventos: todos, cortado: true }
 }
 
 /**

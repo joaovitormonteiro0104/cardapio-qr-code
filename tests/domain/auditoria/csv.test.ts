@@ -43,13 +43,33 @@ describe('eventosParaCsv', () => {
     FUSO,
   )
 
-  it('começa com BOM e cabeçalho', () => {
-    expect(csv.startsWith(BOM + 'data_hora;tipo_evento;')).toBe(true)
+  it('começa com BOM e cabeçalho em português', () => {
+    expect(csv.startsWith(BOM + 'Data e hora;Evento;Quem;Mesa;Conta;Pedido;Motivo;Detalhes')).toBe(true)
   })
 
-  it('usa CRLF e escapa campos', () => {
+  it('usa CRLF, rótulos legíveis e escapa campos', () => {
     const [, linha] = csv.slice(1).split('\r\n')
-    expect(linha).toBe('10/11/2026 12:00:00;pedido_cancelado;funcionario;001;;;"outro: queimou; refazer";"{""numero"":12}"')
+    expect(linha).toBe('10/11/2026 12:00:00;Pedido cancelado;Funcionário 001;;;12;"Outro: queimou; refazer";')
+  })
+
+  it('usa o nome do funcionário quando conhecido', () => {
+    const comNome = eventosParaCsv(
+      [
+        {
+          criadoEm: new Date('2026-11-10T15:00:00Z'),
+          tipoEvento: 'comanda_fechada',
+          atorTipo: 'funcionario',
+          atorId: '004',
+          comandaId: null,
+          pedidoId: null,
+          motivo: null,
+          payload: { numero: 530, mesa: 7, de: 'Paga', para: 'Fechada' },
+        },
+      ],
+      FUSO,
+      new Map([['004', 'Ana']]),
+    )
+    expect(comNome.split('\r\n')[1]).toBe('10/11/2026 12:00:00;Mesa fechada;Ana (004);7;530;;;Paga → Fechada')
   })
 
   it('lista vazia gera só o cabeçalho', () => {

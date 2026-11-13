@@ -353,7 +353,8 @@ Aberta → AguardandoPagamento → Paga → Fechada
 - **Quem grava**: o repository que faz a mutação, DENTRO da mesma função, logo após a escrita. Nunca o componente.
 - **Retenção**: 1 ano. Arquivamento é job administrativo fora do MVP.
 - **Append-only puro**: eventos NUNCA são editados ou deletados. A RLS não tem política de UPDATE nem DELETE nessa tabela pra ninguém. Correções são novos eventos apontando pro original via `payload.corrige_id`.
-- **Export**: gerência baixa CSV filtrado por período em `/gerencia/auditoria`.
+- **Export**: gerência baixa CSV filtrado por período em `/gerencia/auditoria`, com colunas em português (Data e hora, Evento, Quem, Mesa, Conta, Pedido, Motivo, Detalhes) para o contador (decisão 25).
+- Eventos de pedido e de conta gravam também `mesa` (e `conta`, nos de pedido) no payload, para a auditoria responder "o que houve na mesa 7" (decisão 25). O texto legível de cada evento sai de `src/domain/auditoria/resumo.ts`.
 - Limitação conhecida do MVP: como escrita e evento são duas chamadas separadas, uma falha de rede entre elas pode deixar uma mutação sem evento. Aceito no MVP; o repository deve logar o erro no console de forma visível.
 
 ### 6.11 Rotinas automáticas (sem servidor)
@@ -1110,6 +1111,7 @@ Decisões **confirmadas pelo dono do produto em 2026-11-09**:
 | 22 | (2026-11-12) Revisão de design (item 15): `itens_cardapio.descricao` opcional (até 200), observação enviada dentro da janela do pedido, e o cliente lê as `sessoes_mesa` da PRÓPRIA comanda (nova política de SELECT) para mostrar quem pediu cada pedido ("Seu pedido" / "Pedido de Ana") | 6, 15 |
 | 23 | (2026-11-12) O caixa pode marcar como paga uma conta `Aberta` com valor ("Recebi o Pix"), com a mesma confirmação de mesa e valor; `podeMarcarComoPaga` em `domain/comanda/estado.ts` | 12 |
 | 24 | (2026-11-13) Equipe: reativar exige PIN novo; cadastro recusa matrícula equivalente ("1" × "001"); PIN visível com "Gerar PIN" e mostrado uma vez, grande, depois de salvar | 14 |
+| 25 | (2026-11-13) Auditoria: payload de pedido/conta com `mesa` e `conta`; filtros por mesa, nº de conta/pedido e "Quem" (funcionário, clientes, sistema) aplicados na hora; CSV em português | 11, 15 |
 
 Ainda em aberto: nenhuma no momento. A escolha entre Backblaze B2 e S3 pro backup é feita no item 16.
 

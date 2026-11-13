@@ -121,11 +121,12 @@ export async function criarPedido(comandaId: string, itensCarrinho: readonly Nov
 
   const { data: comanda, error: erroComanda } = await supabase
     .from('comandas')
-    .select('estado')
+    .select('estado, numero, mesas (numero)')
     .eq('id', comandaId)
     .single()
   if (erroComanda) throw new ErroPedido('falha', `criarPedido: ${erroComanda.message}`)
-  if (!aceitaNovosPedidos(EstadoComandaSchema.parse((comanda as { estado: string }).estado))) {
+  const dadosComanda = comanda as unknown as { estado: string; numero: number; mesas: { numero: number } | null }
+  if (!aceitaNovosPedidos(EstadoComandaSchema.parse(dadosComanda.estado))) {
     throw new ErroPedido('comanda_nao_aceita', 'criarPedido: comanda não aceita pedidos')
   }
 
@@ -178,6 +179,8 @@ export async function criarPedido(comandaId: string, itensCarrinho: readonly Nov
       pedidoId,
       payload: {
         numero: pedido.numero,
+        mesa: dadosComanda.mesas?.numero ?? null,
+        conta: dadosComanda.numero,
         total_centavos: totalPedido(pedido),
         itens: linhas.map(l => ({
           item_id: l.item_cardapio_id,
@@ -222,16 +225,21 @@ interface SituacaoLida {
   cancelamentoMotivo: string | null
   itens: Pedido['itens']
   estadoComanda: EstadoComanda
+  /** Para a auditoria mostrar mesa e conta (decisão 25). */
+  mesaNumero: number | null
+  contaNumero: number | null
 }
 
 async function lerPedido(pedidoId: string): Promise<SituacaoLida> {
   const { data, error } = await supabase
     .from('pedidos')
-    .select(`${COLUNAS_PEDIDO}, comandas (estado)`)
+    .select(`${COLUNAS_PEDIDO}, comandas (estado, numero, mesas (numero))`)
     .eq('id', pedidoId)
     .single()
   if (error) throw new Error(`lerPedido: ${error.message}`)
-  const linha = data as unknown as LinhaPedido & { comandas: { estado: string } | null }
+  const linha = data as unknown as LinhaPedido & {
+    comandas: { estado: string; numero: number; mesas: { numero: number } | null } | null
+  }
   const pedido = paraPedido(linha)
   return {
     id: pedido.id,
@@ -244,6 +252,8 @@ async function lerPedido(pedidoId: string): Promise<SituacaoLida> {
     cancelamentoMotivo: pedido.cancelamentoMotivo,
     itens: pedido.itens,
     estadoComanda: EstadoComandaSchema.parse(linha.comandas?.estado),
+    mesaNumero: linha.comandas?.mesas?.numero ?? null,
+    contaNumero: linha.comandas?.numero ?? null,
   }
 }
 
@@ -283,7 +293,7 @@ async function gravarTransicao(g: Gravacao): Promise<boolean> {
       comandaId: g.atual.comandaId,
       pedidoId: g.atual.id,
       motivo: g.motivo ?? null,
-      payload: { numero: g.atual.numero, de: g.atual.estado, para: g.novo.estado },
+      payload: { numero: g.atual.numero, mesa: g.atual.mesaNumero, conta: g.atual.contaNumero, de: g.atual.estado, para: g.novo.estado },
     }),
   )
   return true
@@ -498,7 +508,14 @@ export async function alterarQuantidadeItem(
     criarEvento('item_pedido_quantidade_alterada', ator, {
       comandaId: atual.comandaId,
       pedidoId,
-      payload: { numero: atual.numero, item: item.nomeSnapshot, de: item.quantidade, para: quantidade },
+      payload: {
+        numero: atual.numero,
+        mesa: atual.mesaNumero,
+        conta: atual.contaNumero,
+        item: item.nomeSnapshot,
+        de: item.quantidade,
+        para: quantidade,
+      },
     }),
   )
 }
@@ -532,7 +549,7 @@ export async function removerItemDoPedido(pedidoId: string, itemPedidoId: string
     criarEvento('item_pedido_removido', ator, {
       comandaId: atual.comandaId,
       pedidoId,
-      payload: { numero: atual.numero, item: item.nomeSnapshot, quantidade: item.quantidade },
+      payload: { numero: atual.numero, mesa: atual.mesaNumero, conta: atual.contaNumero, item: item.nomeSnapshot, quantidade: item.quantidade },
     }),
   )
 }

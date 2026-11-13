@@ -232,22 +232,22 @@ const RESUMO_PEDIDOS = 'pedidos (numero, estado, itens_pedido (quantidade, preco
 async function lerComandaComPedidos(comandaId: string) {
   const { data, error } = await supabase
     .from('comandas')
-    .select(`${COLUNAS}, ${RESUMO_PEDIDOS}`)
+    .select(`${COLUNAS}, mesas (numero), ${RESUMO_PEDIDOS}`)
     .eq('id', comandaId)
     .single()
   if (error) throw new Error(`lerComandaComPedidos: ${error.message}`)
-  const linha = data as unknown as LinhaComanda & { pedidos: LinhaPedidoResumo[] }
-  return { comanda: paraComanda(linha), pedidos: paraCalculo(linha.pedidos) }
+  const linha = data as unknown as LinhaComanda & { pedidos: LinhaPedidoResumo[]; mesas: { numero: number } | null }
+  return { comanda: paraComanda(linha), pedidos: paraCalculo(linha.pedidos), mesa: linha.mesas?.numero ?? null }
 }
 
 /** Muda o estado da comanda com UPDATE condicional e registra o evento. Devolve false se outro mudou antes. */
-async function mudarEstado(comanda: Comanda, para: EstadoComanda, ator: Ator, extra: Record<string, string> = {}): Promise<boolean> {
+async function mudarEstado(comanda: Comanda, para: EstadoComanda, ator: Ator, mesa: number | null): Promise<boolean> {
   if (!transicaoComandaValida(comanda.estado, para)) {
     throw new ErroComanda(`Esta conta já mudou (agora: ${rotuloEstado(comanda.estado).toLowerCase()}). Atualize a tela.`)
   }
   const { data, error } = await supabase
     .from('comandas')
-    .update({ estado: para, ultima_atividade_em: new Date().toISOString(), ...extra })
+    .update({ estado: para, ultima_atividade_em: new Date().toISOString() })
     .eq('id', comanda.id)
     .eq('estado', comanda.estado)
     .select('id')
@@ -257,22 +257,22 @@ async function mudarEstado(comanda: Comanda, para: EstadoComanda, ator: Ator, ex
   await auditoriaRepo.registrar(
     criarEvento(para === 'Fechada' ? 'comanda_fechada' : 'comanda_estado_alterado', ator, {
       comandaId: comanda.id,
-      payload: { numero: comanda.numero, de: comanda.estado, para },
+      payload: { numero: comanda.numero, mesa, de: comanda.estado, para },
     }),
   )
   return true
 }
 
-async function mudarOuFalhar(comanda: Comanda, para: EstadoComanda): Promise<void> {
-  const ok = await mudarEstado(comanda, para, await auditoriaRepo.atorDaSessao())
+async function mudarOuFalhar(comanda: Comanda, para: EstadoComanda, mesa: number | null): Promise<void> {
+  const ok = await mudarEstado(comanda, para, await auditoriaRepo.atorDaSessao(), mesa)
   if (!ok) throw new ErroComanda('A conta foi alterada por outra pessoa. Atualize a tela.')
 }
 
 /** Cliente toca "já paguei": Aberta → AguardandoPagamento (para de aceitar pedidos). */
 export async function informarPagamento(comandaId: string): Promise<void> {
-  const { comanda, pedidos } = await lerComandaComPedidos(comandaId)
+  const { comanda, pedidos, mesa } = await lerComandaComPedidos(comandaId)
   if (!podeInformarPagamento(comanda.estado, pedidos)) throw new ErroComanda('Não há valor a pagar nesta conta.')
-  await mudarOuFalhar(comanda, 'AguardandoPagamento')
+  await mudarOuFalhar(comanda, 'AguardandoPagamento', mesa)
 }
 
 /**
@@ -280,17 +280,17 @@ export async function informarPagamento(comandaId: string): Promise<void> {
  * quando o cliente pagou e esqueceu de tocar "já paguei" (decisão 23).
  */
 export async function marcarComoPaga(comandaId: string): Promise<void> {
-  const { comanda, pedidos } = await lerComandaComPedidos(comandaId)
+  const { comanda, pedidos, mesa } = await lerComandaComPedidos(comandaId)
   if (!podeMarcarComoPaga(comanda.estado, pedidos)) {
     throw new ErroComanda(comanda.estado === 'Aberta' ? 'Esta conta não tem valor a pagar.' : 'Esta conta já mudou. Atualize a tela.')
   }
-  await mudarOuFalhar(comanda, 'Paga')
+  await mudarOuFalhar(comanda, 'Paga', mesa)
 }
 
 /** Cliente quer pedir mais: AguardandoPagamento → Aberta. */
 export async function reabrir(comandaId: string): Promise<void> {
-  const { comanda } = await lerComandaComPedidos(comandaId)
-  await mudarOuFalhar(comanda, 'Aberta')
+  const { comanda, mesa } = await lerComandaComPedidos(comandaId)
+  await mudarOuFalhar(comanda, 'Aberta', mesa)
 }
 
 const MENSAGENS_NAO_FECHA: Record<MotivoNaoFecha, string> = {
@@ -307,11 +307,11 @@ const MENSAGENS_NAO_FECHA: Record<MotivoNaoFecha, string> = {
  */
 export async function fecharMesa(comandaId: string, ator?: Ator): Promise<boolean> {
   const quem = ator ?? (await auditoriaRepo.atorDaSessao())
-  const { comanda, pedidos } = await lerComandaComPedidos(comandaId)
+  const { comanda, pedidos, mesa } = await lerComandaComPedidos(comandaId)
   const motivo = motivoNaoPodeFechar(comanda.estado, pedidos)
   if (motivo) throw new ErroComanda(MENSAGENS_NAO_FECHA[motivo])
 
-  if (!(await mudarEstado(comanda, 'Fechada', quem))) return false
+  if (!(await mudarEstado(comanda, 'Fechada', quem, mesa))) return false
 
   const agora = new Date().toISOString()
   const { data: finalizados, error: erroPedidos } = await supabase
@@ -326,7 +326,7 @@ export async function fecharMesa(comandaId: string, ator?: Ator): Promise<boolea
       criarEvento('pedido_estado_alterado', quem, {
         comandaId,
         pedidoId: p.id,
-        payload: { numero: p.numero, de: 'Entregue', para: 'Finalizado' },
+        payload: { numero: p.numero, mesa, conta: comanda.numero, de: 'Entregue', para: 'Finalizado' },
       }),
     )
   }

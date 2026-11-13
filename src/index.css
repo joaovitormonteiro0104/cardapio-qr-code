@@ -102,10 +102,10 @@
   @apply mb-1 block text-sm font-medium text-tinta;
 }
 
-/* Impressão dos QR Codes das mesas: só os cartões aparecem no papel. */
+/* Impressão: o cabeçalho de navegação e o que for marcado .nao-imprimir
+   ficam fora do papel (nas Mesas, só os cartões de QR são impressos). */
 @media print {
   header,
-  h1,
   .nao-imprimir {
     display: none !important;
   }

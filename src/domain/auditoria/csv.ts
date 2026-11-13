@@ -1,5 +1,7 @@
 // Export CSV da auditoria (AGENTS.md §6.10, PRD GER-08). Puro.
 import type { AtorTipo } from './evento'
+import { resumirEvento, rotuloAtor } from './resumo'
+import { rotuloMotivo, rotuloTipoEvento } from './rotulos'
 
 export interface EventoParaCsv {
   criadoEm: Date
@@ -39,23 +41,31 @@ export function dataHoraCsv(data: Date, fuso: string): string {
   return `${p('day')}/${p('month')}/${p('year')} ${p('hour')}:${p('minute')}:${p('second')}`
 }
 
-const CABECALHO = ['data_hora', 'tipo_evento', 'ator_tipo', 'ator_id', 'comanda_id', 'pedido_id', 'motivo', 'detalhes']
+/** Colunas em português, para abrir no Excel e mandar ao contador (decisão 25). */
+const CABECALHO = ['Data e hora', 'Evento', 'Quem', 'Mesa', 'Conta', 'Pedido', 'Motivo', 'Detalhes']
 
-export function eventosParaCsv(eventos: readonly EventoParaCsv[], fuso: string): string {
-  const linhas = eventos.map(e =>
-    [
+const numeroOuVazio = (n: number | null) => (n === null ? null : String(n))
+
+export function eventosParaCsv(
+  eventos: readonly EventoParaCsv[],
+  fuso: string,
+  nomesFuncionarios: ReadonlyMap<string, string> = new Map(),
+): string {
+  const linhas = eventos.map(e => {
+    const resumo = resumirEvento(e.tipoEvento, e.payload)
+    return [
       dataHoraCsv(e.criadoEm, fuso),
-      e.tipoEvento,
-      e.atorTipo,
-      e.atorId,
-      e.comandaId,
-      e.pedidoId,
-      e.motivo,
-      JSON.stringify(e.payload ?? {}),
+      rotuloTipoEvento(e.tipoEvento),
+      rotuloAtor(e.atorTipo, e.atorId, nomesFuncionarios, e.payload),
+      numeroOuVazio(resumo.mesa),
+      numeroOuVazio(resumo.conta),
+      numeroOuVazio(resumo.pedido),
+      rotuloMotivo(e.motivo),
+      resumo.texto,
     ]
       .map(campoCsv)
-      .join(SEPARADOR),
-  )
+      .join(SEPARADOR)
+  })
   return BOM + [CABECALHO.join(SEPARADOR), ...linhas].join('\r\n') + '\r\n'
 }
 

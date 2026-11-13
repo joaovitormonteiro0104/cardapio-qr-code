@@ -145,7 +145,7 @@ export default function MesasPage() {
   const paraImprimir = imprimirSo ? ativas.filter(m => m.id === imprimirSo) : ativas
 
   return (
-    <LayoutEquipe titulo="Mesas">
+    <LayoutEquipe titulo="Mesas" imprimirTitulo={false}>
       <div className="nao-imprimir">
         <form onSubmit={criar} noValidate className="mb-5 max-w-lg">
           <label htmlFor="nova-mesa" className="rotulo">
