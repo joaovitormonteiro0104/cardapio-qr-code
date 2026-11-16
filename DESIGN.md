@@ -102,13 +102,13 @@ components:
     padding: "4px 10px"
 ---
 
-<!-- Extraído do código em 2026-11-16 (src/index.css e componentes). A metáfora e os nomes descritivos são provisórios: o usuário ainda não os confirmou. Os valores dos tokens são os reais. -->
+<!-- Extraído do código em 2026-11-16 (src/index.css e componentes). Metáfora ("A comanda limpa") e sensação dos componentes ("macio e firme") confirmadas pelo dono do produto em 2026-11-16. -->
 
 # Design System: Cardápio
 
 ## Overview
 
-**Creative North Star: "A comanda limpa"** *(provisório)*
+**Creative North Star: "A comanda limpa"**
 
 O pedido de papel, passado a limpo: fundo cinza-neutro quase branco, cartões brancos, tinta marrom-escura e uma única cor de marca, o laranja-brasa, reservada para ação e para o que está selecionado. Os estados (recebido, preparando, pronto, cancelado) são as únicas outras cores, sempre em par de fundo claro com texto escuro da mesma família.
 
@@ -191,6 +191,8 @@ Quase plano. A profundidade vem de camadas de tom (fundo cinza → cartão branc
 Cantos arredondados e macios. Controles (botões, campos, avisos) com 12px; cartões, seções recolhíveis e folhas com 16px; fotos de item com 8–12px; chips, selos e o botão de adicionar em pílula/círculo. Fotos sempre cortadas em quadrado (`object-cover`).
 
 ## Components
+
+**Macio e firme.** Cantos generosos e superfícies brancas dão a maciez; alvos de 44px, peso 600 nos rótulos e uma só ação em brasa por tela dão a firmeza.
 
 ### Buttons
 - **Shape:** 12px, altura mínima 44px, padding lateral 16px, peso 600.
