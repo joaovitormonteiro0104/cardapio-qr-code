@@ -56,14 +56,19 @@ export default function PagamentoPage() {
   async function copiar() {
     if (!payload || !comanda) return
     try {
-      await navigator.clipboard.writeText(payload)
+      // Alguns navegadores deixam a cópia pendurada (permissão que nunca chega):
+      // depois de 3 s vale como falha e o cliente vê como copiar à mão.
+      await Promise.race([
+        navigator.clipboard.writeText(payload),
+        new Promise((_, falhar) => setTimeout(() => falhar(new Error('cópia sem resposta')), 3000)),
+      ])
       setCopiado(true)
       setErro(null)
       setValorCopiado(total)
       salvarValorCopiado(comanda.id, total)
       setTimeout(() => setCopiado(false), 4000)
     } catch {
-      setErro('Não foi possível copiar. Abra "Mostrar o código" abaixo, toque e segure no código para copiar.')
+      setErro('Não foi possível copiar. Abra "Mostrar o QR Code" abaixo e toque e segure no código copia e cola para copiar.')
     }
   }
 

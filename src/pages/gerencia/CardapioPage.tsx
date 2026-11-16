@@ -399,8 +399,8 @@ export default function CardapioPage() {
       >
         {confirmarDesativar && (
           <p>
-            Os {itens.filter(i => i.categoriaId === confirmarDesativar.id && i.ativo).length} itens de{' '}
-            <strong>{confirmarDesativar.nome}</strong> somem do cardápio do cliente. Para ver de novo aqui, marque “Mostrar excluídos e
+            <QuantosItens n={itens.filter(i => i.categoriaId === confirmarDesativar.id && i.ativo).length} />{' '}
+            <strong>{confirmarDesativar.nome}</strong> do cardápio do cliente. Para ver de novo aqui, marque “Mostrar excluídos e
             categorias desativadas”.
           </p>
         )}
@@ -420,6 +420,13 @@ interface PropsLinha {
 }
 
 /** Linha enxuta: tocar no item edita; à direita, só a chave "Disponível" (ou "Restaurar" se excluído). */
+/** Começo da frase de desativar categoria, no singular/plural certo ("Saem os 3 itens de"). */
+function QuantosItens({ n }: { n: number }) {
+  if (n === 0) return <>Sai a categoria</>
+  if (n === 1) return <>Sai o único item de</>
+  return <>Saem os {n} itens de</>
+}
+
 function LinhaItem({ item, ocupado, aoEditar, aoAlternar, aoRestaurar }: PropsLinha) {
   const esgotado = item.ativo && !item.disponivel
   return (

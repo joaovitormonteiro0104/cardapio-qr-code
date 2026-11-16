@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from 'react'
 import { Modal } from '@/components/Modal'
+import { rotuloMotivo } from '@/domain/auditoria/rotulos'
 import {
   MOTIVOS_CANCELAMENTO,
   ROTULOS_MOTIVO,
@@ -207,7 +208,7 @@ function Etapa2({ pedido, aoMudarEtapa, aoConcluir }: { pedido: Pedido } & Omit<
     >
       {pedido.cancelamentoMotivo && (
         <p className="mb-3 rounded-xl bg-perigo-clara px-3 py-2 text-sm">
-          Motivo: <strong>{pedido.cancelamentoMotivo}</strong>
+          Motivo: <strong>{rotuloMotivo(pedido.cancelamentoMotivo)}</strong>
         </p>
       )}
       <p className="text-sm text-tinta-suave">

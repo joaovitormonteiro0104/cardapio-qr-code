@@ -1,3 +1,4 @@
+import { rotuloMotivo } from '@/domain/auditoria/rotulos'
 import type { ConfigsTempo } from '@/domain/config'
 import { itensAtivos } from '@/domain/pedido/calculo'
 import { podeCancelar } from '@/domain/pedido/cancelamento'
@@ -109,7 +110,7 @@ export function CartaoPedidoCozinha({
       )}
       {emCancelamento && (
         <p className="mt-3 rounded-xl bg-perigo-clara px-3 py-2 text-sm text-perigo">
-          Cancelamento pendente{pedido.cancelamentoMotivo && <>: <strong>{pedido.cancelamentoMotivo}</strong></>}
+          Cancelamento pendente{pedido.cancelamentoMotivo && <>: <strong>{rotuloMotivo(pedido.cancelamentoMotivo)}</strong></>}
         </p>
       )}
 
