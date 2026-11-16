@@ -38,6 +38,8 @@ export default function AuditoriaPage() {
   const [erro, setErro] = useState<string | null>(null)
   const [exportando, setExportando] = useState<number | null>(null)
   const [aviso, setAviso] = useState<Aviso | null>(null)
+  // No celular os filtros detalhados ficam recolhidos: antes ocupavam a tela inteira.
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false)
   const [nomes, setNomes] = useState<Map<string, string>>(new Map())
   const limparAviso = useCallback(() => setAviso(null), [])
 
@@ -175,7 +177,16 @@ export default function AuditoriaPage() {
             </button>
           ))}
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <button
+          type="button"
+          className="botao-secundario w-full text-sm md:hidden"
+          aria-expanded={filtrosAbertos}
+          aria-controls="aud-filtros"
+          onClick={() => setFiltrosAbertos(v => !v)}
+        >
+          {filtrosAbertos ? 'Esconder filtros' : `Mais filtros${temFiltroExtra || !ativo ? ' (em uso)' : ''}`}
+        </button>
+        <div id="aud-filtros" className={`${filtrosAbertos ? 'grid' : 'hidden'} gap-3 sm:grid-cols-2 md:grid lg:grid-cols-3`}>
           <div>
             <label htmlFor="aud-inicio" className="rotulo">De</label>
             <input id="aud-inicio" type="date" className="campo" value={inicio} max={hoje} onChange={e => mudar(setInicio)(e.target.value)} />

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useRotinasAutomaticas } from '@/hooks/useRotinasCozinha'
@@ -43,6 +43,11 @@ export function LayoutEquipe({
   useRotinasAutomaticas(configs)
   const links = papel === 'gerencia' ? [...LINKS_OPERACAO, ...LINKS_GERENCIA] : LINKS_OPERACAO
 
+  // Nome da aba do navegador conforme a tela (antes ficava "Cardápio" em todas).
+  useEffect(() => {
+    document.title = `${titulo} · Equipe`
+  }, [titulo])
+
   async function deslogar() {
     try {
       await sair()
@@ -53,17 +58,18 @@ export function LayoutEquipe({
 
   return (
     <div className="min-h-dvh">
-      <header className="sticky top-0 z-10 border-b border-borda bg-superficie/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-start gap-3 px-4 py-2 sm:items-center">
+      {/* No celular o cabeçalho rola junto com a página: fixo, ele ocupava ~20% da tela. */}
+      <header className="z-10 border-b border-borda bg-superficie/95 backdrop-blur md:sticky md:top-0">
+        <div className="mx-auto flex max-w-7xl items-start gap-2 px-3 py-2 sm:items-center sm:gap-3 sm:px-4">
           {/* flex-wrap: no celular as abas quebram em linhas em vez de esconder à direita */}
-          <nav aria-label="Áreas" className="-mx-1 flex flex-1 flex-wrap gap-1">
+          <nav aria-label="Áreas" className="-mx-1 flex flex-1 flex-wrap gap-0.5 sm:gap-1">
             {links.map(link => (
               <NavLink
                 key={link.para}
                 to={link.para}
                 end={link.para === '/cozinha'}
                 className={({ isActive }) =>
-                  `flex min-h-11 shrink-0 items-center rounded-lg px-3 text-sm font-medium ${
+                  `flex min-h-11 shrink-0 items-center rounded-lg px-2.5 text-sm font-medium sm:px-3 ${
                     isActive ? 'bg-brasa-clara text-brasa-forte' : 'text-tinta-suave hover:bg-fundo'
                   }`
                 }
@@ -72,7 +78,7 @@ export function LayoutEquipe({
               </NavLink>
             ))}
           </nav>
-          <span className="hidden text-xs text-tinta-suave sm:inline">
+          <span className="hidden text-sm text-tinta-suave sm:inline">
             {papel === 'gerencia' ? 'Gerência' : 'Operação'}
           </span>
           <button type="button" onClick={deslogar} className="botao-secundario min-h-11 px-3 text-sm">

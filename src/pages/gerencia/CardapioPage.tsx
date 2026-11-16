@@ -93,7 +93,8 @@ export default function CardapioPage() {
   const visivel = (item: ItemCardapio) => nomeCorresponde(item.nome, termo)
   const itensPorCategoria = (id: string) => itens.filter(item => item.categoriaId === id && visivel(item))
   const esgotados = itens.filter(item => item.ativo && !item.disponivel && visivel(item))
-  const semCategoria = ordem.length === 0
+  // Só conta como "sem categoria" depois de carregar: senão os botões trocam de destaque ao abrir a tela.
+  const semCategoria = !carregando && ordem.length === 0
 
   const linha = (item: ItemCardapio) => (
     <LinhaItem
@@ -114,7 +115,7 @@ export default function CardapioPage() {
         <button
           type="button"
           className={semCategoria ? 'botao-secundario' : 'botao-primario'}
-          disabled={semCategoria}
+          disabled={carregando || semCategoria}
           onClick={() => setEdicaoItem({ item: null, categoriaId: null })}
         >
           Novo item
@@ -135,7 +136,7 @@ export default function CardapioPage() {
         >
           {organizando ? 'Concluir organização' : 'Organizar categorias'}
         </button>
-        <label className="ml-auto flex min-h-11 items-center gap-2 text-sm">
+        <label className="flex min-h-11 w-full items-center gap-2 text-sm sm:ml-auto sm:w-auto">
           <input type="checkbox" className="size-5 accent-brasa" checked={mostrarInativos} onChange={e => setMostrarInativos(e.target.checked)} />
           Mostrar excluídos e categorias desativadas
         </label>
