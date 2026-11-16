@@ -94,8 +94,8 @@ export default function PagamentoPage() {
           <p className="mt-2 text-sm">Se demorar, mostre o comprovante do banco a um atendente.</p>
         </Situacao>
         {payload && (
-          <details className="rounded-2xl bg-superficie ring-1 ring-borda">
-            <summary className="flex min-h-11 items-center px-4 font-semibold">Ainda não pagou? Ver o código Pix de novo</summary>
+          <details className="group rounded-2xl bg-superficie ring-1 ring-borda">
+            <Resumo>Ainda não pagou? Ver o código Pix de novo</Resumo>
             <div className="space-y-3 border-t border-borda px-4 py-4">
               <BlocoCodigo payload={payload} total={total} />
             </div>
@@ -194,8 +194,8 @@ export default function PagamentoPage() {
         {erro}
       </p>
 
-      <details className="rounded-2xl bg-superficie ring-1 ring-borda">
-        <summary className="flex min-h-11 items-center px-4 font-semibold">Vai pagar de outro celular? Mostrar o QR Code</summary>
+      <details className="group rounded-2xl bg-superficie ring-1 ring-borda">
+        <Resumo>Vai pagar de outro celular? Mostrar o QR Code</Resumo>
         <div className="space-y-3 border-t border-borda px-4 py-4">
           <BlocoCodigo payload={payload} total={total} />
         </div>
@@ -248,6 +248,18 @@ function Passo({ numero, titulo, children }: { numero: number; titulo: string; c
         {children}
       </div>
     </li>
+  )
+}
+
+/** Linha clicável de um <details>, com a mesma seta da "Minha conta". */
+function Resumo({ children }: { children: ReactNode }) {
+  return (
+    <summary className="flex min-h-11 items-center justify-between gap-3 px-4 py-3 font-semibold">
+      <span>{children}</span>
+      <span aria-hidden className="text-tinta-suave transition-transform group-open:rotate-180">
+        ▾
+      </span>
+    </summary>
   )
 }
 

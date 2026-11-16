@@ -116,9 +116,14 @@ export default function ComandaPage() {
             <span className="tabular-nums">{formatarReal(total)}</span>
           </Link>
         )}
-        {comanda.estado !== 'Aberta' && (
+        {comanda.estado === 'AguardandoPagamento' && (
           <p role="note" className="mt-3 rounded-xl bg-info-clara px-3 py-2 text-sm text-info">
             A conta foi enviada para pagamento. Para mudar algum pedido, chame um atendente.
+          </p>
+        )}
+        {comanda.estado === 'Paga' && (
+          <p role="note" className="mt-3 rounded-xl bg-sucesso-clara px-3 py-2 text-sm text-sucesso">
+            Conta paga. Obrigado pela visita!
           </p>
         )}
       </section>
@@ -171,10 +176,20 @@ export default function ComandaPage() {
         </details>
       )}
 
-      <Observacao
-        valorInicial={comanda.observacao ?? ''}
-        aoSalvar={async texto => atualizarComanda(await comandaRepo.atualizarObservacao(comanda, texto))}
-      />
+      {/* Depois do "já paguei" o cliente não muda nada pelo celular (decisão 20). */}
+      {comanda.estado === 'Aberta' ? (
+        <Observacao
+          valorInicial={comanda.observacao ?? ''}
+          aoSalvar={async texto => atualizarComanda(await comandaRepo.atualizarObservacao(comanda, texto))}
+        />
+      ) : (
+        comanda.observacao && (
+          <div>
+            <h2 className="rotulo">Observação para a cozinha</h2>
+            <p className="whitespace-pre-line rounded-xl bg-superficie px-3 py-2 ring-1 ring-borda">{comanda.observacao}</p>
+          </div>
+        )
+      )}
 
       {configs && (
         <EditarItensModal

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { Link, NavLink, Outlet, useOutletContext, useParams } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useOutletContext, useParams } from 'react-router-dom'
 import { Carregando } from '@/components/Carregando'
+import { separarPedidos } from '@/domain/pedido/apresentacao'
 import { useAuth } from '@/hooks/useAuth'
 import { useCarrinho, type Carrinho } from '@/hooks/useCarrinho'
 import { useComanda, type EstadoComandaCliente } from '@/hooks/useComanda'
@@ -61,6 +62,14 @@ export default function MesaLayout() {
     return () => clearTimeout(timer)
   }, [aviso])
 
+  // Título da aba do navegador conforme a seção ("Minha conta · Mesa 2 · Casa").
+  const nomeCasa = configs?.nomeEstabelecimento || 'Cardápio'
+  const caminho = useLocation().pathname
+  const secao = caminho.endsWith('/comanda') ? 'Minha conta' : caminho.endsWith('/pagamento') ? 'Pagar' : 'Cardápio'
+  useEffect(() => {
+    document.title = `${secao} · Mesa ${numeroMesa}${configs?.nomeEstabelecimento ? ` · ${configs.nomeEstabelecimento}` : ''}`
+  }, [secao, numeroMesa, configs?.nomeEstabelecimento])
+
   if (estado.fase === 'carregando') return <Carregando texto="Abrindo o cardápio…" />
   if (estado.fase === 'mesa_indisponivel') return <MesaIndisponivel />
   if (estado.fase === 'erro') return <ErroConexao />
@@ -68,15 +77,15 @@ export default function MesaLayout() {
   if (estado.fase === 'funcionario') return <AparelhoDaEquipe />
   if (estado.fase === 'pedir_nome') return <PedirNome numeroMesa={numeroMesa} entrar={estado.entrar} />
 
-  const nomeCasa = configs?.nomeEstabelecimento || 'Cardápio'
-  const pedidosAtivos = estado.pedidos.filter(p => p.estado !== 'Cancelado' && p.estado !== 'Finalizado').length
+  // Mesma regra da lista "Em andamento" da conta: entregue não conta mais.
+  const pedidosAtivos = separarPedidos(estado.pedidos).andamento.length
   const contexto: ContextoMesa = { ...estado, numeroMesa, carrinho, configs, aviso, setAviso }
 
   return (
     <div className="mx-auto min-h-dvh max-w-2xl pb-28">
       <header ref={cabecalho} className="sticky top-0 z-20 border-b border-borda bg-fundo/95 backdrop-blur">
         <div className="flex items-baseline justify-between gap-3 px-4 pt-3">
-          <p className="truncate text-lg font-bold tracking-tight">{nomeCasa}</p>
+          <h1 className="truncate text-lg font-bold tracking-tight">{nomeCasa}</h1>
           <p className="shrink-0 text-sm text-tinta-suave">
             Mesa {numeroMesa}
             {estado.comanda && <span className="tabular-nums"> · conta #{estado.comanda.numero}</span>}
