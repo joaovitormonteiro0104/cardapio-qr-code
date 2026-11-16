@@ -2,7 +2,7 @@
 
 /*
   Tema do Tailwind v4 (AGENTS.md §2). Cada variável --color-X vira classes
-  como bg-X, text-X, border-X. Paleta quente de cozinha: fundo creme, tinta
+  como bg-X, text-X, border-X. Paleta de cozinha: fundo neutro, tinta
   marrom-escura, cor de marca "brasa" e cores de estado com contraste AA.
 */
 @theme {

@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-16T18:00:00-03:00",
+  "title": "Design System: Cardápio",
+  "extensions": {
+    "colorMeta": {
+      "brasa": { "role": "primary", "displayName": "Brasa", "canonical": "oklch(0.55 0.17 38)", "tonalRamp": ["oklch(0.25 0.08 38)", "oklch(0.35 0.12 38)", "oklch(0.47 0.16 36)", "oklch(0.55 0.17 38)", "oklch(0.65 0.14 40)", "oklch(0.75 0.1 42)", "oklch(0.86 0.06 44)", "oklch(0.95 0.035 45)"] },
+      "fundo": { "role": "neutral", "displayName": "Fundo", "canonical": "oklch(0.965 0.002 250)" },
+      "superficie": { "role": "neutral", "displayName": "Superfície", "canonical": "oklch(1 0 0)" },
+      "tinta": { "role": "neutral", "displayName": "Tinta", "canonical": "oklch(0.24 0.02 50)" },
+      "tinta-suave": { "role": "neutral", "displayName": "Tinta Suave", "canonical": "oklch(0.45 0.02 55)" },
+      "borda": { "role": "neutral", "displayName": "Borda", "canonical": "oklch(0.9 0.012 70)" },
+      "borda-campo": { "role": "neutral", "displayName": "Borda de Campo", "canonical": "oklch(0.62 0.015 60)" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Valores de destaque, como o total na tela Pagar." },
+      "headline": { "displayName": "Headline", "purpose": "Título de tela." },
+      "title": { "displayName": "Title", "purpose": "Nome da casa, títulos de seção e de modal." },
+      "body": { "displayName": "Body", "purpose": "Texto corrido e campos (16px evita zoom no iOS)." },
+      "label": { "displayName": "Label", "purpose": "Rótulos, abas, chips e botões pequenos." }
+    },
+    "shadows": [
+      { "name": "repouso", "value": "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)", "purpose": "Cartões de resumo e de pedido, com anel de 1px." },
+      { "name": "folha", "value": "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)", "purpose": "Modais sobre véu em tinta a 40%." }
+    ],
+    "motion": [
+      { "name": "cores", "value": "150ms cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Troca de cor em hover e seleção (transition-colors)." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botão principal",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Uma ação principal por tela; com valor, o total vai à direita.",
+      "html": "<button class=\"ds-btn-primario\"><span>Enviar para a cozinha</span><span class=\"ds-num\">R$ 49,80</span></button>",
+      "css": ".ds-btn-primario { display: inline-flex; min-height: 44px; min-width: 280px; align-items: center; justify-content: space-between; gap: 8px; border: 0; border-radius: 12px; padding: 0 16px; background: var(--color-brasa); color: #fff; font: 600 16px system-ui, sans-serif; cursor: pointer; transition: background-color 150ms; } .ds-btn-primario:hover { background: var(--color-brasa-forte); } .ds-btn-primario:focus-visible { outline: 2px solid var(--color-brasa); outline-offset: 2px; } .ds-num { font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Botão secundário",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Ações de apoio (Voltar, Editar, Salvar observação).",
+      "html": "<button class=\"ds-btn-secundario\">Voltar</button>",
+      "css": ".ds-btn-secundario { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; border: 1px solid var(--color-borda); border-radius: 12px; padding: 0 16px; background: var(--color-superficie); color: var(--color-tinta); font: 600 16px system-ui, sans-serif; cursor: pointer; transition: background-color 150ms; } .ds-btn-secundario:hover { background: var(--color-fundo); } .ds-btn-secundario:focus-visible { outline: 2px solid var(--color-brasa); outline-offset: 2px; }"
+    },
+    {
+      "name": "Campo",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo de formulário com rótulo acima.",
+      "html": "<label class=\"ds-rotulo\" for=\"ds-campo\">Matrícula</label><input id=\"ds-campo\" class=\"ds-campo\" inputmode=\"numeric\">",
+      "css": ".ds-rotulo { display: block; margin-bottom: 4px; font: 500 14px system-ui, sans-serif; color: var(--color-tinta); } .ds-campo { box-sizing: border-box; width: 280px; min-height: 44px; border: 1px solid var(--color-borda-campo); border-radius: 12px; padding: 0 12px; background: var(--color-superficie); color: var(--color-tinta); font: 400 16px system-ui, sans-serif; } .ds-campo:focus { outline: none; border-color: var(--color-brasa); box-shadow: 0 0 0 2px color-mix(in oklch, var(--color-brasa) 30%, transparent); }"
+    },
+    {
+      "name": "Abas da mesa",
+      "kind": "nav",
+      "refersTo": null,
+      "description": "Cardápio / Minha conta / Pagar, com contador de pedidos em andamento.",
+      "html": "<nav class=\"ds-abas\"><a class=\"ds-aba\" href=\"#\">Cardápio</a><a class=\"ds-aba ds-ativa\" href=\"#\">Minha conta <span class=\"ds-cont\">1</span></a><a class=\"ds-aba\" href=\"#\">Pagar</a></nav>",
+      "css": ".ds-abas { display: flex; gap: 4px; width: 360px; border-bottom: 1px solid var(--color-borda); } .ds-aba { display: flex; flex: 1; min-height: 44px; align-items: center; justify-content: center; border-bottom: 2px solid transparent; color: var(--color-tinta-suave); font: 600 14px system-ui, sans-serif; text-decoration: none; } .ds-aba:hover { color: var(--color-tinta); } .ds-ativa { border-color: var(--color-brasa); color: var(--color-brasa-forte); } .ds-cont { margin-left: 6px; border-radius: 9999px; padding: 0 6px; background: var(--color-brasa); color: #fff; font-size: 12px; font-weight: 700; }"
+    },
+    {
+      "name": "Chip de categoria",
+      "kind": "chip",
+      "refersTo": "chip-category",
+      "description": "Atalho para a seção do cardápio; o ativo segue a rolagem.",
+      "html": "<div class=\"ds-chips\"><a class=\"ds-chip ds-chip-ativo\" href=\"#\">Lanches</a><a class=\"ds-chip\" href=\"#\">Porções</a><a class=\"ds-chip\" href=\"#\">Bebidas</a></div>",
+      "css": ".ds-chips { display: flex; gap: 8px; } .ds-chip { display: flex; min-height: 44px; align-items: center; border: 1px solid var(--color-borda); border-radius: 9999px; padding: 0 16px; background: var(--color-superficie); color: var(--color-tinta); font: 500 14px system-ui, sans-serif; text-decoration: none; transition: background-color 150ms, color 150ms; } .ds-chip:focus-visible { outline: 2px solid var(--color-brasa); outline-offset: 2px; } .ds-chip-ativo { border-color: var(--color-brasa); background: var(--color-brasa-clara); color: var(--color-brasa-forte); }"
+    },
+    {
+      "name": "Cartão de pedido",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Pedido na Minha conta, com selo de estado.",
+      "html": "<article class=\"ds-cartao\"><div class=\"ds-topo\"><strong>Seu pedido</strong><span class=\"ds-selo\">Recebido</span></div><p class=\"ds-linha\"><span>2× X-Burguer</span><span>R$ 37,80</span></p></article>",
+      "css": ".ds-cartao { width: 340px; border-radius: 16px; padding: 12px 16px; background: var(--color-superficie); box-shadow: 0 0 0 1px var(--color-borda), 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); font: 400 14px system-ui, sans-serif; color: var(--color-tinta); } .ds-topo { display: flex; justify-content: space-between; align-items: center; } .ds-selo { border-radius: 9999px; padding: 4px 10px; background: var(--color-info-clara); color: var(--color-info); font-size: 12px; font-weight: 600; } .ds-linha { display: flex; justify-content: space-between; margin: 12px 0 0; font-variant-numeric: tabular-nums; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "A comanda limpa",
+    "overview": "O pedido de papel, passado a limpo: fundo cinza-neutro quase branco, cartões brancos, tinta marrom-escura e uma única cor de marca, o laranja-brasa, reservada para ação e para o que está selecionado. Os estados (recebido, preparando, pronto, cancelado) são as únicas outras cores, sempre em par de fundo claro com texto escuro da mesma família. A densidade muda por tela: o cliente vê uma coluna só (até 672px), com alvos grandes e uma ação principal por vez; a equipe ganha largura (até 1280px) e colunas no tablet em paisagem. Não há fonte própria: a fonte do sistema mantém o app leve e familiar no celular de cada cliente.",
+    "keyCharacteristics": [
+      "Uma cor de marca (brasa) e quatro cores de estado; o resto é neutro.",
+      "Alvo de toque mínimo de 44px em todo controle.",
+      "Cantos arredondados generosos (12px controles, 16px cartões, pílula em chips e selos).",
+      "Profundidade por borda de 1px e sombra mínima, nunca por cor.",
+      "Números de dinheiro e horário sempre em algarismos tabulares."
+    ],
+    "rules": [
+      { "name": "The One Ember Rule", "body": "Brasa só marca ação ou seleção. Nunca serve de decoração, fundo de seção ou cor de texto comum.", "section": "colors" },
+      { "name": "The Paired State Rule", "body": "Cor de estado vem sempre como fundo claro + texto da mesma família; nunca texto colorido solto sobre o fundo neutro (exceto mensagem de erro em perigo).", "section": "colors" },
+      { "name": "The Tabular Money Rule", "body": "Todo valor em R$, quantidade, número de pedido e horário usa algarismos tabulares (tabular-nums).", "section": "typography" },
+      { "name": "The Border-First Rule", "body": "Separar com borda ou tom de fundo antes de pensar em sombra. Sem borda lateral colorida em cartões e avisos.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do usar só os tokens de src/index.css (@theme); cor nova vira token antes de ser usada.",
+      "Do garantir 44px de alvo em qualquer coisa tocável.",
+      "Do usar botao-primario para uma única ação principal por tela ou folha.",
+      "Do mostrar valores com formatarReal e tabular-nums."
+    ],
+    "donts": [
+      "Don't usar brasa como decoração, fundo de seção ou texto comum.",
+      "Don't colocar borda lateral colorida em cartões, linhas ou avisos (achado do scanner Impeccable).",
+      "Don't voltar ao fundo creme; o fundo é neutro.",
+      "Don't usar cor de estado fora do par fundo claro + texto."
+    ]
+  }
+}
