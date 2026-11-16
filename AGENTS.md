@@ -618,7 +618,8 @@ VITE_SUPABASE_ANON_KEY=sua-anon-key-publica-aqui
 ```
 
 - `VITE_SUPABASE_ANON_KEY` é PÚBLICA (vai pro bundle do navegador). Não é segredo.
-- `SUPABASE_SERVICE_ROLE_KEY` é SEGREDO. NUNCA no frontend, nunca com prefixo `VITE_`. Existe só (a) automaticamente dentro das Edge Functions, e (b) em GitHub Actions (backup) como `secrets.SUPABASE_SERVICE_KEY`.
+- `SUPABASE_SERVICE_ROLE_KEY` é SEGREDO. NUNCA no frontend, nunca com prefixo `VITE_`. Existe só automaticamente dentro das Edge Functions.
+- O backup (`.github/workflows/backup.yml`, decisão 26) usa segredos SÓ do GitHub: `SUPABASE_DB_URL` (URI do Session pooler com a senha do banco), `BACKUP_SENHA` (criptografia do arquivo) e `B2_KEY_ID`, `B2_APPLICATION_KEY`, `B2_BUCKET`, `B2_ENDPOINT`, `B2_REGIAO`. Passo a passo no README.
 - `.env.local` é ignorado pelo Git (`.gitignore`). NUNCA commite.
 
 ---
@@ -1112,12 +1113,15 @@ Decisões **confirmadas pelo dono do produto em 2026-11-09**:
 | 23 | (2026-11-12) O caixa pode marcar como paga uma conta `Aberta` com valor ("Recebi o Pix"), com a mesma confirmação de mesa e valor; `podeMarcarComoPaga` em `domain/comanda/estado.ts` | 12 |
 | 24 | (2026-11-13) Equipe: reativar exige PIN novo; cadastro recusa matrícula equivalente ("1" × "001"); PIN visível com "Gerar PIN" e mostrado uma vez, grande, depois de salvar | 14 |
 | 25 | (2026-11-13) Auditoria: payload de pedido/conta com `mesa` e `conta`; filtros por mesa, nº de conta/pedido e "Quem" (funcionário, clientes, sistema) aplicados na hora; CSV em português | 11, 15 |
+| 26 | (2026-11-16) Backup no **Backblaze B2**: GitHub Action diária às 03:00 (Fortaleza), `pg_dump` 17 em formato custom dos schemas `public`, `auth` e `storage`, criptografado com GPG (AES256) e enviado pela API S3 do B2 para bucket privado; retenção de 30 dias por regra de ciclo de vida do bucket | 16 |
 
-Ainda em aberto: nenhuma no momento. A escolha entre Backblaze B2 e S3 pro backup é feita no item 16.
+Ainda em aberto: nenhuma no momento.
 
 ---
 
 ## 16. Histórico de revisões deste arquivo
+
+**Revisão 7 (2026-11-16)** — item 16 (go-live) concluído em código: backup diário no B2 (decisão 26), §9 com os segredos do backup.
 
 **Revisão 6 (2026-11-13)** — item 15 (polimento) concluído em código:
 - Critique Impeccable nas 11 telas (relatórios em `.impeccable/critique/`), correções aplicadas; scanner final sem achados no código e nas telas públicas.

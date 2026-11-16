@@ -1,0 +1,103 @@
+# Backup diário do banco do Supabase para o Backblaze B2 (AGENTS.md item 16).
+#
+# Todo dia, de madrugada, faz um pg_dump do banco inteiro (formato custom,
+# já comprimido), criptografa com uma senha e envia para um bucket PRIVADO
+# no B2 pela API compatível com S3. Também dá para rodar na mão em
+# GitHub → Actions → "Backup diário do banco" → "Run workflow".
+#
+# Segredos (GitHub → Settings → Secrets and variables → Actions). NUNCA
+# coloque esses valores no repositório. Passo a passo no README.
+#   SUPABASE_DB_URL        conexão do Postgres (Session pooler, porta 5432)
+#   BACKUP_SENHA           senha para criptografar o arquivo (guarde-a!)
+#   B2_KEY_ID              keyID da Application Key do B2
+#   B2_APPLICATION_KEY     applicationKey do B2
+#   B2_BUCKET              nome do bucket (privado)
+#   B2_ENDPOINT            ex.: https://s3.us-east-005.backblazeb2.com
+#   B2_REGIAO              ex.: us-east-005
+
+name: Backup diário do banco
+
+on:
+  schedule:
+    # 06:00 UTC = 03:00 em Fortaleza, fora do expediente
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-banco
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Conferir se os segredos existem
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_SENHA: ${{ secrets.BACKUP_SENHA }}
+          B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+          B2_BUCKET: ${{ secrets.B2_BUCKET }}
+          B2_ENDPOINT: ${{ secrets.B2_ENDPOINT }}
+          B2_REGIAO: ${{ secrets.B2_REGIAO }}
+        run: |
+          faltando=""
+          for nome in SUPABASE_DB_URL BACKUP_SENHA B2_KEY_ID B2_APPLICATION_KEY B2_BUCKET B2_ENDPOINT B2_REGIAO; do
+            if [ -z "${!nome}" ]; then faltando="$faltando $nome"; fi
+          done
+          if [ -n "$faltando" ]; then
+            echo "::error::Faltam segredos no GitHub:$faltando (veja o README, seção Backup)"
+            exit 1
+          fi
+
+      # O banco do Supabase é Postgres 17: o pg_dump precisa ser da mesma
+      # versão ou mais novo. O Ubuntu do GitHub traz uma versão antiga.
+      - name: Instalar o cliente do Postgres 17
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+          /usr/lib/postgresql/17/bin/pg_dump --version
+
+      - name: Gerar o backup (pg_dump)
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          arquivo="cardapio_$(date -u +%Y-%m-%d_%H%M).dump"
+          /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" \
+            --format=custom --no-owner --no-privileges \
+            --schema=public --schema=auth --schema=storage \
+            --file="$arquivo"
+          ls -lh "$arquivo"
+          echo "ARQUIVO=$arquivo" >> "$GITHUB_ENV"
+
+      # O backup tem nomes e acessos da equipe: vai criptografado.
+      - name: Criptografar
+        env:
+          BACKUP_SENHA: ${{ secrets.BACKUP_SENHA }}
+        run: |
+          gpg --batch --yes --symmetric --cipher-algo AES256 \
+            --passphrase-fd 0 --output "$ARQUIVO.gpg" "$ARQUIVO" <<< "$BACKUP_SENHA"
+          rm -f "$ARQUIVO"
+          ls -lh "$ARQUIVO.gpg"
+
+      - name: Enviar para o Backblaze B2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.B2_REGIAO }}
+          B2_BUCKET: ${{ secrets.B2_BUCKET }}
+          B2_ENDPOINT: ${{ secrets.B2_ENDPOINT }}
+          # A AWS CLI nova manda cabeçalhos de checksum que o B2 pode recusar.
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+        run: |
+          aws s3 cp "$ARQUIVO.gpg" "s3://$B2_BUCKET/diario/$ARQUIVO.gpg" --endpoint-url "$B2_ENDPOINT" --only-show-errors
+          echo "Backup enviado: diario/$ARQUIVO.gpg"
+          rm -f "$ARQUIVO.gpg"
